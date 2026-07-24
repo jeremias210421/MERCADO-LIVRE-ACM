@@ -16,6 +16,11 @@ app.secret_key = os.getenv("SECRET_KEY", "chave_secreta_padrao")
 # Configurações do Supabase (usando variáveis de ambiente)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
+
+# Verificar se variáveis de ambiente estão configuradas
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("SUPABASE_URL e SUPABASE_KEY devem ser configuradas como variáveis de ambiente")
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Configuração de upload
