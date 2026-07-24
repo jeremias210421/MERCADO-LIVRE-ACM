@@ -6,3 +6,5 @@ def handler(event, context):
         },
         'body': '{"status": "ok", "message": "API funcionando"}'
     }
+
+app = handler
