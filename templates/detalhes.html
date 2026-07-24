@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-signpost-2"></i> Detalhes da Rota: {{ rota.rota }}</span>
+                <a href="{{ url_for('index') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="stat-card p-3 bg-light mb-3">
+                            <small class="text-muted">ID Original</small>
+                            <div class="fw-bold">{{ rota.id_original or '-' }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card p-3 bg-light mb-3">
+                            <small class="text-muted">Total Paradas</small>
+                            <div class="fw-bold">{{ rota.total_paradas }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card p-3 bg-light mb-3">
+                            <small class="text-muted">Total Pacotes</small>
+                            <div class="fw-bold">{{ rota.total_pacotes }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card p-3 bg-light mb-3">
+                            <small class="text-muted">Cidade</small>
+                            <div class="fw-bold">{{ rota.cidade or '-' }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if rota.observacao %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> {{ rota.observacao }}
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">Criado em: {{ rota.criado_em.strftime('%d/%m/%Y %H:%M:%S') }}</small>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <small class="text-muted">Atualizado em: {{ rota.atualizado_em.strftime('%d/%m/%Y %H:%M:%S') }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-list-ol"></i> Paradas e Pacotes
+            </div>
+            <div class="card-body">
+                {% if paradas %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Seq</th>
+                                <th>Endereço</th>
+                                <th>Tipo</th>
+                                <th>Pacotes</th>
+                                <th>Quantidade</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for parada in paradas %}
+                            <tr>
+                                <td><span class="badge bg-primary">{{ parada.sequencia }}</span></td>
+                                <td>{{ parada.endereco }}</td>
+                                <td>
+                                    {% if parada.tipo_endereco == 'Comercial' %}
+                                    <span class="badge bg-warning text-dark">Comercial</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Residencial</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for pacote in parada.pacotes %}
+                                        <span class="badge bg-light text-dark border">{{ pacote.codigo_pacote }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-info">{{ parada.pacotes|length }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-inbox" style="font-size: 48px; color: #6c757d;"></i>
+                    <p class="mt-3 text-muted">Nenhuma parada cadastrada para esta rota</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-bar-chart"></i> Resumo
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h3 class="text-primary">{{ paradas|length }}</h3>
+                            <p class="text-muted">Total de Paradas</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h3 class="text-success">
+                                {{ paradas|sum(attribute='pacotes')|length if paradas else 0 }}
+                            </h3>
+                            <p class="text-muted">Total de Pacotes</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h3 class="text-warning">
+                                {{ paradas|selectattr('tipo_endereco', 'equalto', 'Comercial')|list|length }}
+                            </h3>
+                            <p class="text-muted">Endereços Comerciais</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Adicionar filtro de busca simples
+document.addEventListener('DOMContentLoaded', function() {
+    // Você pode adicionar funcionalidades extras aqui se necessário
+});
+</script>
+{% endblock %}

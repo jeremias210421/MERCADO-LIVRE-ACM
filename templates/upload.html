@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-upload"></i> Upload de Arquivo JSON
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    <div class="upload-area mb-4" onclick="document.getElementById('fileInput').click()">
+                        <i class="bi bi-cloud-upload"></i>
+                        <h4 class="mt-3">Clique para selecionar arquivos</h4>
+                        <p class="text-muted">ou arraste e solte aqui (múltiplos arquivos permitidos)</p>
+                        <input type="file" name="files" id="fileInput" accept=".json" multiple style="display: none;" onchange="previewFiles()">
+                        <div id="fileList" class="mt-3"></div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5><i class="bi bi-file-earmark-code"></i> Formato do Arquivo JSON</h5>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <pre class="mb-0 small"><code>{
+  "rota": "I59_PM1",
+  "id": "409704037",
+  "totalParadas": 39,
+  "totalPacotes": 47,
+  "paradas": [
+    {
+      "sequencia": "01",
+      "endereco": "Rua Jj Seabra 69",
+      "pacotes": ["47491788377"],
+      "tipo_endereco": "Comercial"
+    }
+  ],
+  "observacao": "",
+  "cidade": ""
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                            <i class="bi bi-upload"></i> Importar Rotas (<span id="fileCount">0</span> arquivos)
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="bi bi-lightbulb"></i> Dicas
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li><i class="bi bi-check-circle text-success"></i> O arquivo deve estar em formato JSON válido</li>
+                    <li><i class="bi bi-check-circle text-success"></i> O nome da rota não pode duplicar rotas existentes</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Os campos "sequencia", "endereco" e "pacotes" são obrigatórios</li>
+                    <li><i class="bi bi-check-circle text-success"></i> O arquivo será processado automaticamente após o upload</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function previewFiles() {
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const submitBtn = document.getElementById('submitBtn');
+    const fileCount = document.getElementById('fileCount');
+    
+    if (fileInput.files.length > 0) {
+        fileList.innerHTML = '<h5 class="mt-3">Arquivos selecionados:</h5>';
+        
+        for (let i = 0; i < fileInput.files.length; i++) {
+            const file = fileInput.files[i];
+            fileList.innerHTML += `<div class="alert alert-info py-2">
+                <i class="bi bi-file-earmark-code"></i> ${file.name}
+                <span class="badge bg-secondary float-end">${(file.size / 1024).toFixed(1)} KB</span>
+            </div>`;
+        }
+        
+        fileCount.textContent = fileInput.files.length;
+        submitBtn.disabled = false;
+    } else {
+        fileList.innerHTML = '';
+        fileCount.textContent = '0';
+        submitBtn.disabled = true;
+    }
+}
+
+// Drag and drop functionality
+const uploadArea = document.querySelector('.upload-area');
+
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.style.backgroundColor = '#e9ecef';
+    uploadArea.style.borderColor = '#0056b3';
+});
+
+uploadArea.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    uploadArea.style.backgroundColor = '#f8f9fa';
+    uploadArea.style.borderColor = '#007bff';
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.style.backgroundColor = '#f8f9fa';
+    uploadArea.style.borderColor = '#007bff';
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        // Filtrar apenas arquivos JSON
+        const jsonFiles = Array.from(files).filter(file => file.name.endsWith('.json'));
+        
+        if (jsonFiles.length === 0) {
+            alert('Por favor, selecione apenas arquivos JSON');
+            return;
+        }
+        
+        if (jsonFiles.length < files.length) {
+            alert(`${files.length - jsonFiles.length} arquivo(s) não JSON foram ignorados`);
+        }
+        
+        // Criar FileList com apenas arquivos JSON
+        const dataTransfer = new DataTransfer();
+        jsonFiles.forEach(file => dataTransfer.items.add(file));
+        document.getElementById('fileInput').files = dataTransfer.files;
+        
+        previewFiles();
+    }
+});
+</script>
+{% endblock %}

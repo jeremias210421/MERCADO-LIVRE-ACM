@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-check"></i> Rotas Cadastradas</span>
+                <a href="{{ url_for('upload_file') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-plus-circle"></i> Nova Rota
+                </a>
+            </div>
+            <div class="card-body">
+                {% if rotas %}
+                    <div class="row">
+                        {% for rota in rotas %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card rota-card" onclick="window.location.href='{{ url_for('detalhes_rota', rota_id=rota.id) }}'">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="bi bi-signpost-2"></i> {{ rota.rota }}
+                                    </h5>
+                                    <p class="card-text text-muted small">
+                                        <i class="bi bi-calendar"></i> Criado em: {{ rota.criado_em.strftime('%d/%m/%Y %H:%M') }}
+                                    </p>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="stat-card p-2 bg-light">
+                                                <small class="text-muted">Paradas</small>
+                                                <div class="fw-bold">{{ rota.total_paradas }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="stat-card p-2 bg-light">
+                                                <small class="text-muted">Pacotes</small>
+                                                <div class="fw-bold">{{ rota.total_pacotes }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% if rota.observacao %}
+                                    <p class="card-text mt-2 small">
+                                        <i class="bi bi-info-circle"></i> {{ rota.observacao }}
+                                    </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox" style="font-size: 64px; color: #6c757d;"></i>
+                        <h4 class="mt-3">Nenhuma rota cadastrada</h4>
+                        <p class="text-muted">Faça upload de arquivos JSON para começar</p>
+                        <a href="{{ url_for('upload_file') }}" class="btn btn-primary">
+                            <i class="bi bi-upload"></i> Fazer Upload
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Informações
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li><i class="bi bi-check-circle text-success"></i> Clique em uma rota para ver detalhes</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Use o botão "Nova Rota" para fazer upload de arquivos JSON</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Os arquivos devem seguir o formato especificado</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
