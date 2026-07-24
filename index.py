@@ -1,10 +1,8 @@
-from flask import Flask, jsonify
-
-app = Flask(__name__)
-
-@app.route('/')
-def index():
-    return jsonify({"status": "ok", "message": "API funcionando"})
-
-# Handler para Vercel
-handler = app
+def handler(event, context):
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Content-Type': 'application/json'
+        },
+        'body': '{"status": "ok", "message": "API funcionando"}'
+    }
