@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from werkzeug.utils import secure_filename
 import os
 import json
-from supabase import create_client, Client
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -16,7 +15,17 @@ app.secret_key = os.getenv("SECRET_KEY", "chave_secreta_padrao")
 # Configurações do Supabase (usando variáveis de ambiente)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Inicializar Supabase apenas se variáveis estiverem configuradas
+supabase = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        from supabase import create_client, Client
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print(f"Erro ao conectar ao Supabase: {e}")
+else:
+    print("AVISO: Variáveis de ambiente do Supabase não configuradas")
 
 # Configuração de upload
 ALLOWED_EXTENSIONS = {'json'}
@@ -74,6 +83,8 @@ def importar_json_para_supabase(dados_json):
 @app.route('/')
 def index():
     """Página principal"""
+    if not supabase:
+        return jsonify({"status": "error", "message": "Supabase não configurado"})
     try:
         # Buscar rotas cadastradas
         rotas = supabase.table('rotas').select('*').order('rota').execute()
