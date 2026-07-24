@@ -8,7 +8,9 @@ from datetime import datetime
 
 load_dotenv()
 
-app = Flask(__name__)
+# Configurar template folder para funcionar no Vercel
+template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+app = Flask(__name__, template_folder=template_dir)
 app.secret_key = os.getenv("SECRET_KEY", "chave_secreta_padrao")
 
 # Configurações do Supabase (usando variáveis de ambiente)
