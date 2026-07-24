@@ -14,7 +14,11 @@ app.secret_key = os.getenv("SECRET_KEY", "chave_secreta_padrao")
 
 # Configurações do Supabase (usando variáveis de ambiente)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_PUBLISHABLE_KEY") or os.getenv("SUPABASE_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_PUBLISHABLE_KEY")
+
+# Debug logging
+print(f"SUPABASE_URL: {SUPABASE_URL}")
+print(f"SUPABASE_KEY: {SUPABASE_KEY[:10] if SUPABASE_KEY else None}...")
 
 # Inicializar Supabase apenas se variáveis estiverem configuradas
 supabase = None
@@ -22,6 +26,7 @@ if SUPABASE_URL and SUPABASE_KEY:
     try:
         from supabase import create_client, Client
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("Supabase conectado com sucesso")
     except Exception as e:
         print(f"Erro ao conectar ao Supabase: {e}")
 else:
