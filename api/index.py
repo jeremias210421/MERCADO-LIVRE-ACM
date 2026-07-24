@@ -17,11 +17,15 @@ app.secret_key = os.getenv("SECRET_KEY", "chave_secreta_padrao")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
 
-# Verificar se variáveis de ambiente estão configuradas
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("SUPABASE_URL e SUPABASE_KEY devem ser configuradas como variáveis de ambiente")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Inicializar Supabase apenas se variáveis estiverem configuradas
+supabase = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print(f"Erro ao conectar ao Supabase: {e}")
+else:
+    print("AVISO: Variáveis de ambiente do Supabase não configuradas")
 
 # Configuração de upload
 ALLOWED_EXTENSIONS = {'json'}
@@ -79,6 +83,8 @@ def importar_json_para_supabase(dados_json):
 @app.route('/')
 def index():
     """Página principal"""
+    if not supabase:
+        return render_template('index.html', rotas=[], error="Supabase não configurado")
     try:
         # Buscar rotas cadastradas
         rotas = supabase.table('rotas').select('*').order('rota').execute()
