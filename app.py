@@ -18,7 +18,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY
 
 # Debug logging
 print(f"SUPABASE_URL: {SUPABASE_URL}")
-print(f"SUPABASE_KEY: {SUPABASE_KEY[:10] if SUPABASE_KEY else None}...")
+print(f"SUPABASE_KEY prefix: {SUPABASE_KEY[:12] if SUPABASE_KEY else None}...")
 
 # Inicializar Supabase apenas se variáveis estiverem configuradas
 supabase = None
