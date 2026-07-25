@@ -74,6 +74,7 @@
                                 <th>Tipo</th>
                                 <th>Pacotes</th>
                                 <th>Quantidade</th>
+                                <th>WhatsApp</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -96,6 +97,13 @@
                                     </div>
                                 </td>
                                 <td><span class="badge bg-info">{{ parada.pacotes|length }}</span></td>
+                                <td>
+                                    <a href="https://wa.me/?text={{ 'Rota: ' + rota.rota + '%0AParada: ' + parada.sequencia + '%0AEndereço: ' + parada.endereco + '%0APacotes: ' + (parada.pacotes|map(attribute='codigo_pacote')|join(', '))|urlencode }}" 
+                                       target="_blank" 
+                                       class="btn btn-success btn-sm">
+                                        <i class="bi bi-whatsapp"></i> Enviar
+                                    </a>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
