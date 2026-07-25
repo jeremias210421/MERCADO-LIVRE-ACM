@@ -14,7 +14,7 @@ app.secret_key = os.getenv("SECRET_KEY", "chave_secreta_padrao")
 
 # Configurações do Supabase (usando variáveis de ambiente)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_PUBLISHABLE_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_PUBLISHABLE_KEY")
 
 # Debug logging
 print(f"SUPABASE_URL: {SUPABASE_URL}")
