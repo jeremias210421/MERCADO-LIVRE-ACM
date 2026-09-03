@@ -1,20 +1,37 @@
+#!/usr/bin/env python3
+"""
+Script legado para importar rotas - mantido para compatibilidade.
+Uso: python importar_rotas.py
+"""
+
 import json
 import os
-from supabase import create_client, Client
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
-# Configurações do Supabase
-SUPABASE_URL = "https://sfplhlhvcaicbtomjyqv.supabase.co"
+# Configurações do Supabase (via variáveis de ambiente)
+SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
 
-# Inicializar cliente Supabase
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("ERRO: Variáveis SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY devem estar definidas no .env")
+    sys.exit(1)
+
+try:
+    from supabase import create_client, Client
+except ImportError:
+    print("ERRO: Biblioteca 'supabase' não instalada. Execute: pip install supabase")
+    sys.exit(1)
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+
 def importar_arquivo_json(caminho_arquivo):
-    """Importa dados de um arquivo JSON para o Supabase"""
+    """Importa dados de um arquivo JSON para o Supabase."""
     with open(caminho_arquivo, 'r', encoding='utf-8') as f:
         dados = json.load(f)
     
@@ -55,25 +72,27 @@ def importar_arquivo_json(caminho_arquivo):
     
     print(f"Paradas e pacotes importados para rota {dados['rota']}")
 
+
 def main():
     # Diretório atual
-    diretorio = os.getcwd()
+    diretorio = Path.cwd()
     
     # Encontrar todos os arquivos JSON
-    arquivos_json = [f for f in os.listdir(diretorio) if f.endswith('.json')]
+    arquivos_json = [f for f in diretorio.iterdir() if f.suffix == '.json']
     
     print(f"Encontrados {len(arquivos_json)} arquivos JSON")
     
     # Importar cada arquivo
     for arquivo in arquivos_json:
-        caminho_completo = os.path.join(diretorio, arquivo)
-        print(f"\nImportando {arquivo}...")
+        caminho_completo = arquivo
+        print(f"\nImportando {arquivo.name}...")
         try:
             importar_arquivo_json(caminho_completo)
         except Exception as e:
-            print(f"Erro ao importar {arquivo}: {e}")
+            print(f"Erro ao importar {arquivo.name}: {e}")
     
     print("\nImportação concluída!")
+
 
 if __name__ == "__main__":
     main()

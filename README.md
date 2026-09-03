@@ -1,195 +1,166 @@
-# Sistema de Rotas de Entrega - Supabase
+# Bipador ACM - Ibotirama
 
-Este projeto cria um banco de dados no Supabase para gerenciar rotas de entrega com base nos arquivos JSON disponíveis, com uma interface web para upload e gerenciamento.
+Sistema de gestão de rotas, motoristas e entregas para a ACM Ibotirama.
 
-## Estrutura do Banco de Dados
+## 📋 Funcionalidades
 
-### Tabelas:
+- **Dashboard**: Visão geral de entregas, entregadores ativos e taxa de entrega
+- **Gestão de Entregadores**: CRUD completo de motoristas
+- **Gestão de Rotas**: Upload de rotas via JSON, designação de motoristas
+- **Conferência do Galpão**: Scanner para conferir pacotes restantes
+- **Pendências**: Acompanhamento de pacotes não entregues
+- **APIs**: Endpoints para integração com app Android
 
-1. **rotas** - Informações principais de cada rota
-   - id (UUID, chave primária)
-   - rota (nome da rota)
-   - id_original (ID do sistema original)
-   - total_paradas (número de paradas)
-   - total_pacotes (número total de pacotes)
-   - observacao (observações)
-   - cidade (cidade da rota)
+## 🚀 Instalação
 
-2. **paradas** - Detalhes de cada parada na rota
-   - id (UUID, chave primária)
-   - rota_id (referência para a rota)
-   - sequencia (ordem da parada)
-   - endereco (endereço completo)
-   - tipo_endereco (Residencial/Comercial)
+### Pré-requisitos
 
-3. **pacotes** - Pacotes entregues em cada parada
-   - id (UUID, chave primária)
-   - parada_id (referência para a parada)
-   - codigo_pacote (código de rastreamento)
-   - status (pendente/entregue/falha/cancelado)
+- Python 3.11+
+- Conta no Supabase
 
-## Configuração
+### Configuração
 
-### 1. Criar o banco de dados no Supabase
-
-1. Acesse [supabase.com](https://supabase.com)
-2. Crie um novo projeto ou use o existente (ref: sfplhlhvcaicbtomjyqv)
-3. No SQL Editor do Supabase, execute o arquivo `schema.sql`
-
-### 2. Instalar dependências Python
-
+1. Clone o repositório:
 ```bash
-pip install supabase python-dotenv
+git clone <repo-url>
+cd BIPADOR-ACM
 ```
 
-### 3. Configurar credenciais
-
-1. No painel do Supabase, vá em Settings > API
-2. Copie a chave anon/public e a service_role key
-3. Crie um arquivo `.env` no diretório do projeto:
-
+2. Crie um ambiente virtual:
 ```bash
-cp .env.example .env
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# ou
+venv\Scripts\activate  # Windows
 ```
 
-4. Edite o arquivo `.env` e cole suas chaves:
-
-```
-SUPABASE_URL=https://seu-projeto.supabase.co
-SUPABASE_KEY=sua_chave_anon_aqui
-SUPABASE_SERVICE_ROLE_KEY=sua_chave_service_role_aqui
-SECRET_KEY=chave_secreta_para_sessoes_flask
-```
-
-## Interface Web
-
-### Instalar dependências para a interface web:
-
+3. Instale as dependências:
 ```bash
 pip install -r requirements.txt
 ```
 
-### Executar a aplicação web:
+4. Configure as variáveis de ambiente:
+```bash
+cp .env.example .env
+# Edite .env com suas credenciais do Supabase
+```
+
+5. Execute as migrações no Supabase (SQL Editor):
+- Execute o conteúdo de `schema.sql` no SQL Editor do Supabase
+
+6. Importe as rotas (opcional):
+```bash
+python importar_direto.py
+```
+
+7. Execute a aplicação:
+```bash
+python run.py
+```
+
+A aplicação estará disponível em `http://localhost:5000`
+
+## 📁 Estrutura do Projeto
+
+```
+BIPADOR-ACM/
+├── app/                    # Aplicação Flask (novo padrão)
+│   ├── __init__.py         # Factory da aplicação
+│   ├── supabase_client.py  # Cliente Supabase centralizado
+│   └── routes/             # Blueprints organizados por funcionalidade
+│       ├── dashboard.py
+│       ├── entregadores.py
+│       ├── galpao.py
+│       ├── pendentes.py
+│       ├── rotas.py
+│       ├── upload.py
+│       └── api.py
+├── templates/              # Templates Jinja2
+│   ├── base.html
+│   ├── dashboard.html
+│   ├── entregadores.html
+│   ├── entregador_detalhe.html
+│   ├── entregador_form.html
+│   ├── galpao.html
+│   ├── pendentes.html
+│   ├── rotas.html
+│   └── upload.html
+├── acm-ibotirama/          # App Android (React + Capacitor)
+├── schema.sql              # Schema completo do banco
+├── importar_direto.py      # Script de importação de rotas
+├── run.py                  # Ponto de entrada
+├── requirements.txt        # Dependências Python
+├── vercel.json             # Configuração Vercel
+└── .env.example            # Exemplo de variáveis de ambiente
+```
+
+## 🗄️ Banco de Dados (Supabase)
+
+### Tabelas Principais
+
+- `rotas` - Rotas de entrega
+- `paradas` - Paradas de cada rota
+- `pacotes` - Pacotes de cada parada
+- `motoristas` - Entregadores cadastrados
+- `scans` - Entregas realizadas (bipagens)
+- `rota_motoristas` - Vínculo rota-motorista
+- `galpao_scans` - Conferência do galpão
+- `pacotes_pendentes` - Pacotes não entregues
+
+### Funções SQL
+
+- `identificar_pacote(codigo)` - Identifica rota/motorista de um pacote
+- `gerar_pendencias_diarias(sessao_id)` - Gera pendências do galpão
+- `dashboard_resumo_diario(data)` - Resumo para dashboard
+- `progresso_entregadores_diario(data)` - Progresso por entregador
+
+## 📱 App Android
+
+O app Android está em `acm-ibotirama/` e usa:
+- React + TypeScript + Vite
+- Capacitor para build nativo
+- html5-qrcode para scanner
+- Supabase para sincronização
+
+### Build do APK
 
 ```bash
-python app.py
+cd acm-ibotirama
+npm install
+npm run build
+npx cap sync android
+npx cap build android
 ```
 
-A aplicação estará disponível em: `http://localhost:5000`
+## 🔧 Variáveis de Ambiente
 
-### Funcionalidades da Interface Web:
+| Variável | Descrição | Obrigatório |
+|----------|-----------|-------------|
+| `SUPABASE_URL` | URL do projeto Supabase | Sim |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key do Supabase | Sim |
+| `SECRET_KEY` | Chave secreta do Flask | Sim |
+| `FLASK_ENV` | Ambiente (development/production) | Não |
+| `FLASK_DEBUG` | Debug mode (1/0) | Não |
 
-1. **Página Inicial**: Lista todas as rotas cadastradas com estatísticas
-2. **Upload de Arquivos**: Interface para upload de arquivos JSON com drag-and-drop
-3. **Detalhes da Rota**: Visualização completa de paradas e pacotes de cada rota
-4. **API REST**: Endpoints para integração com outros sistemas
+## 📦 Deploy no Vercel
 
-## Importar Dados via Script
+1. Conecte o repositório no Vercel
+2. Configure as variáveis de ambiente no painel do Vercel
+3. O deploy é automático via `vercel.json`
 
-Execute o script de importação:
+## 🐛 Solução de Problemas
 
-```bash
-python importar_rotas.py
-```
+### Erro de conexão com Supabase
+- Verifique se `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` estão corretos
+- Confirme se o IP está liberado no Supabase (Settings > API)
 
-Este script irá:
-- Ler todos os arquivos JSON do diretório atual
-- Criar as rotas no banco de dados
-- Importar todas as paradas e pacotes
+### Tabelas não encontradas
+- Execute o `schema.sql` no SQL Editor do Supabase
 
-## Consultas Úteis
+### Erro de constraint UNIQUE em scans
+- A constraint `uq_scans_rota_pacote_data` impede bipar o mesmo pacote na mesma rota no mesmo dia
+- Para testar, use códigos diferentes ou dias diferentes
 
-### Ver todas as rotas
-```sql
-SELECT * FROM rotas ORDER BY rota;
-```
+## 📝 Licença
 
-### Ver paradas de uma rota específica
-```sql
-SELECT p.sequencia, p.endereco, p.tipo_endereco 
-FROM paradas p
-JOIN rotas r ON p.rota_id = r.id
-WHERE r.rota = 'I59_PM1'
-ORDER BY p.sequencia;
-```
-
-### Contar pacotes por rota
-```sql
-SELECT r.rota, r.total_pacotes, COUNT(pac.id) as pacotes_importados
-FROM rotas r
-LEFT JOIN paradas par ON r.id = par.rota_id
-LEFT JOIN pacotes pac ON par.id = pac.parada_id
-GROUP BY r.id, r.rota, r.total_pacotes;
-```
-
-### Ver pacotes pendentes de entrega
-```sql
-SELECT pac.codigo_pacote, p.endereco, r.rota
-FROM pacotes pac
-JOIN paradas p ON pac.parada_id = p.id
-JOIN rotas r ON p.rota_id = r.id
-WHERE pac.status = 'pendente'
-ORDER BY r.rota, p.sequencia;
-```
-
-## Estrutura dos Arquivos JSON
-
-Os arquivos JSON devem seguir este formato:
-```json
-{
-  "rota": "I59_PM1",
-  "id": "409704037",
-  "totalParadas": 39,
-  "totalPacotes": 47,
-  "paradas": [
-    {
-      "sequencia": "01",
-      "endereco": "Rua Jj Seabra 69",
-      "pacotes": ["47491788377", "47491788603"],
-      "tipo_endereco": "Comercial"
-    }
-  ],
-  "observacao": "",
-  "cidade": ""
-}
-```
-
-## Limpar Banco de Dados
-
-Se precisar reimportar os dados, primeiro limpe as tabelas:
-
-```sql
-TRUNCATE TABLE pacotes, paradas, rotas CASCADE;
-```
-
-## API REST
-
-A aplicação web também fornece uma API REST para integração:
-
-### Listar todas as rotas
-```
-GET /api/rotas
-```
-
-### Detalhes de uma rota específica
-```
-GET /api/rota/<rota_id>
-```
-
-### Exemplo de uso:
-```bash
-# Listar todas as rotas
-curl http://localhost:5000/api/rotas
-
-# Obter detalhes de uma rota específica
-curl http://localhost:5000/api/rota/uuid-da-rota
-```
-
-## Notas
-
-- O sistema usa UUIDs como chaves primárias para melhor segurança
-- Índices foram criados para melhorar performance das consultas
-- Triggers automáticos atualizam os timestamps de modificação
-- O script Python pode ser executado múltiplas vezes (irá duplicar dados se não limpar antes)
-- A interface web impede duplicação de rotas com o mesmo nome
-- A aplicação web usa Bootstrap 5 para uma interface responsiva e moderna
+Projeto interno ACM Ibotirama.

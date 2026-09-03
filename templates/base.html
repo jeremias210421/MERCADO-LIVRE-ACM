@@ -3,103 +3,564 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Rotas de Entrega</title>
+    <title>{% block title %}ACM Ibotirama - Gestao{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #0f1117;
+            --bg-secondary: #1a1d27;
+            --bg-tertiary: #242836;
+            --bg-hover: #2a2f3e;
+            --border-color: rgba(255,255,255,0.06);
+            --border-light: rgba(255,255,255,0.1);
+            --text-primary: #f0f0f0;
+            --text-secondary: #8b8fa3;
+            --text-muted: #5a5e72;
+            --accent: #10b981;
+            --accent-light: rgba(16,185,129,0.1);
+            --accent-border: rgba(16,185,129,0.2);
+            --warning: #f59e0b;
+            --warning-light: rgba(245,158,11,0.1);
+            --danger: #ef4444;
+            --danger-light: rgba(239,68,68,0.1);
+            --info: #3b82f6;
+            --info-light: rgba(59,130,246,0.1);
+            --sidebar-width: 260px;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            background-color: #f8f9fa;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0;
+            min-height: 100vh;
         }
-        .navbar-brand {
-            font-weight: bold;
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            transition: transform 0.3s ease;
         }
-        .card {
+
+        .sidebar-brand {
+            padding: 24px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sidebar-brand-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-size: 20px;
+            font-weight: 900;
+            box-shadow: 0 0 20px rgba(16,185,129,0.3);
+        }
+
+        .sidebar-brand-text {
+            font-weight: 800;
+            font-size: 16px;
+            letter-spacing: -0.5px;
+        }
+
+        .sidebar-brand-sub {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .sidebar-link:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .sidebar-link.active {
+            background: var(--accent-light);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .sidebar-link i {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .sidebar-section {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 20px 16px 8px;
+        }
+
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+        }
+
+        /* Top Header */
+        .top-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(15,17,23,0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .top-header h1 {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin: 0;
+        }
+
+        .top-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px rgba(16,185,129,0.5);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Page Content */
+        .page-content {
+            padding: 32px;
+        }
+
+        /* Cards */
+        .card-gestor {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.2s;
+        }
+
+        .card-gestor:hover {
+            border-color: var(--border-light);
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+
+        .stat-card .stat-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+        }
+
+        .stat-card .stat-sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Buttons */
+        .btn-accent {
+            background: var(--accent);
+            color: #000;
+            font-weight: 700;
             border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-size: 13px;
+            transition: all 0.2s;
         }
-        .card-header {
-            background-color: #007bff;
-            color: white;
-            font-weight: bold;
+
+        .btn-accent:hover {
+            background: #0ea371;
+            color: #000;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16,185,129,0.3);
         }
-        .table-responsive {
-            border-radius: 8px;
+
+        .btn-outline-gestor {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-outline-gestor:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--text-muted);
+        }
+
+        /* Tables */
+        .table-gestor {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table-gestor thead th {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 16px;
+            border: none;
+        }
+
+        .table-gestor thead th:first-child { border-radius: 12px 0 0 0; }
+        .table-gestor thead th:last-child { border-radius: 0 12px 0 0; }
+
+        .table-gestor tbody td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .table-gestor tbody tr:hover {
+            background: var(--bg-hover);
+        }
+
+        /* Progress Bar */
+        .progress-gestor {
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
             overflow: hidden;
         }
-        .btn-primary {
-            background-color: #007bff;
-            border-color: #007bff;
+
+        .progress-gestor-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.7s ease-out;
         }
-        .btn-primary:hover {
-            background-color: #0056b3;
-            border-color: #0056b3;
-        }
-        .upload-area {
-            border: 2px dashed #007bff;
+
+        /* Badges */
+        .badge-gestor {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 10px;
             border-radius: 8px;
-            padding: 40px;
-            text-align: center;
-            background-color: #f8f9fa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-success { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-border); }
+        .badge-warning { background: var(--warning-light); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); }
+        .badge-danger { background: var(--danger-light); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+        .badge-info { background: var(--info-light); color: var(--info); border: 1px solid rgba(59,130,246,0.2); }
+
+        /* Alerts */
+        .alert-gestor {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 20px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .alert-gestor.alert-success { border-color: var(--accent-border); background: var(--accent-light); }
+        .alert-gestor.alert-warning { border-color: rgba(245,158,11,0.2); background: var(--warning-light); }
+        .alert-gestor.alert-danger { border-color: rgba(239,68,68,0.2); background: var(--danger-light); }
+
+        /* Forms */
+        .form-control-gestor {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .form-control-gestor:focus {
+            background: var(--bg-tertiary);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .form-control-gestor::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-label-gestor {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        /* Mobile Toggle */
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: var(--accent);
+            border-radius: 16px;
+            border: none;
+            color: #000;
+            font-size: 24px;
+            z-index: 200;
+            box-shadow: 0 4px 20px rgba(16,185,129,0.4);
             cursor: pointer;
-            transition: all 0.3s;
         }
-        .upload-area:hover {
-            background-color: #e9ecef;
-            border-color: #0056b3;
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 90;
         }
-        .upload-area i {
-            font-size: 48px;
-            color: #007bff;
+
+        /* Responsive */
+        @media (max-width: 991px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-overlay.open {
+                display: block;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .mobile-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .top-header {
+                padding: 12px 16px;
+            }
+            .page-content {
+                padding: 16px;
+            }
         }
-        .rota-card {
-            cursor: pointer;
-            transition: transform 0.2s;
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
         }
-        .rota-card:hover {
-            transform: translateY(-5px);
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .stat-card {
-            border-left: 4px solid #007bff;
-        }
-        .alert {
-            border-radius: 8px;
+
+        /* Chart container */
+        .chart-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
         }
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="bi bi-truck"></i> Sistema de Rotas de Entrega
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="{{ url_for('index') }}">
-                    <i class="bi bi-house"></i> Início
-                </a>
-                <a class="nav-link" href="{{ url_for('upload_file') }}">
-                    <i class="bi bi-upload"></i> Upload
-                </a>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">
+                <i class="bi bi-truck"></i>
+            </div>
+            <div>
+                <div class="sidebar-brand-text">ACM Ibotirama</div>
+                <div class="sidebar-brand-sub">Painel do Gestor</div>
             </div>
         </div>
-    </nav>
 
-    <div class="container mt-4">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">Principal</div>
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+                <i class="bi bi-grid-1x2-fill"></i> Dashboard
+            </a>
+            <a href="{{ url_for('entregadores.listar_entregadores') }}" class="sidebar-link {% if 'entregadores' in request.endpoint|default('') %}active{% endif %}">
+                <i class="bi bi-person-badge"></i> Entregadores
+            </a>
+            <a href="{{ url_for('rotas.listar_rotas') }}" class="sidebar-link {% if 'rotas' in request.endpoint|default('') %}active{% endif %}">
+                <i class="bi bi-signpost-2"></i> Rotas
+            </a>
 
-        {% block content %}{% endblock %}
+            <div class="sidebar-section">Operacoes</div>
+            <a href="{{ url_for('galpao.conferencia_galpao') }}" class="sidebar-link {% if 'galpao' in request.endpoint|default('') %}active{% endif %}">
+                <i class="bi bi-box-seam"></i> Conferencia Galpao
+            </a>
+            <a href="{{ url_for('pendentes.listar_pendentes') }}" class="sidebar-link {% if 'pendentes' in request.endpoint|default('') %}active{% endif %}">
+                <i class="bi bi-clock-history"></i> Pendentes
+            </a>
+            <a href="{{ url_for('upload.upload_file') }}" class="sidebar-link {% if request.endpoint == 'upload.upload_file' %}active{% endif %}">
+                <i class="bi bi-cloud-upload"></i> Upload Rotas
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="d-flex align-items-center gap-2">
+                <div class="status-dot"></div>
+                <span style="font-size: 12px; color: var(--text-secondary);">Sistema Online</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Overlay mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header class="top-header">
+            <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+            <div class="top-header-meta">
+                <span><i class="bi bi-calendar3"></i> {{ now.strftime('%d/%m/%Y') if now else '' }}</span>
+                <span><i class="bi bi-clock"></i> <span id="clock"></span></span>
+                <div class="status-dot d-none d-sm-block"></div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert-gestor alert-{{ category }} fade-in mb-3">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
     </div>
 
+    <!-- Mobile Toggle Button -->
+    <button class="mobile-toggle" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    {% block scripts %}{% endblock %}
+    <script>
+        // Relogio
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = 
+                now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // Sidebar mobile toggle
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('open');
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,58 @@
+name: Geracao Ibotirama (nuvem)
+
+on:
+  schedule:
+    - cron: '2 3 * * *' # 00:02 BRT todos os dias
+  repository_dispatch:
+    types: [gerar]
+  workflow_dispatch:
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install -r etl/requirements-etl.txt
+          playwright install chromium --with-deps
+
+      - name: Restore auth cache
+        uses: actions/cache/restore@v4
+        with:
+          path: auth_state.json
+          key: okta-auth-v1
+
+      - name: Bootstrap auth (primeira vez)
+        if: ${{ secrets.OKTA_AUTH_STATE != '' }}
+        env:
+          OKTA_AUTH_STATE: ${{ secrets.OKTA_AUTH_STATE }}
+        run: |
+          if [ ! -f auth_state.json ]; then echo "$OKTA_AUTH_STATE" > auth_state.json; fi
+
+      - name: Run ETL
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          AUTH_STATE_PATH: auth_state.json
+          OKTA_USER: ${{ secrets.OKTA_USER }}
+          OKTA_PASS: ${{ secrets.OKTA_PASS }}
+          OKTA_TOTP_SEED: ${{ secrets.OKTA_TOTP_SEED }}
+        run: python etl/geracao_cloud.py
+
+      - name: Save auth cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: auth_state.json
+          key: okta-auth-v1

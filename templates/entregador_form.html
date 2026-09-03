@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Editar' if motorista and motorista.id else 'Novo' }} Entregador - ACM Ibotirama{% endblock %}
+{% block page_title %}{{ 'Editar' if motorista and motorista.id else 'Novo' }} Entregador{% endblock %}
+
+{% block content %}
+<div class="fade-in" style="max-width: 600px;">
+    <div class="card-gestor">
+        <form method="POST">
+            {{ form.hidden_tag() if form else '' }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-4">
+                <label class="form-label-gestor">Nome do Entregador *</label>
+                <input type="text" name="nome" class="form-control-gestor w-100"
+                    value="{{ motorista.nome if motorista else '' }}"
+                    placeholder="Ex: João Silva" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label-gestor">Telefone (WhatsApp)</label>
+                <input type="text" name="telefone" class="form-control-gestor w-100"
+                    value="{{ motorista.telefone if motorista else '' }}"
+                    placeholder="Ex: (77) 99999-9999">
+            </div>
+
+            <div class="d-flex gap-3 mt-4">
+                <button type="submit" class="btn-accent">
+                    <i class="bi bi-check-lg me-2"></i>
+                    {{ 'Salvar Alterações' if motorista and motorista.id else 'Cadastrar Entregador' }}
+                </button>
+                <a href="{{ url_for('entregadores.listar_entregadores') }}" class="btn-outline-gestor">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

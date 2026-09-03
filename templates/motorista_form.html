@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-badge"></i>
+                {% if motorista and motorista.id %}
+                    Editar Motorista
+                {% else %}
+                    Novo Motorista
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="nome" class="form-label">Nome *</label>
+                        <input type="text" class="form-control" id="nome" name="nome"
+                               value="{{ motorista.nome if motorista and motorista.nome else '' }}"
+                               placeholder="Nome do motorista" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="telefone" class="form-label">Telefone</label>
+                        <input type="text" class="form-control" id="telefone" name="telefone"
+                               value="{{ motorista.telefone if motorista and motorista.telefone else '' }}"
+                               placeholder="(11) 99999-9999">
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('listar_motoristas') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i>
+                            {% if motorista and motorista.id %}
+                                Salvar Alteracoes
+                            {% else %}
+                                Cadastrar
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+# Docker ignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.env
+*.log
+logs/
+.pytest_cache/
+.coverage
+coverage.xml
+.mypy_cache/
+.ruff_cache/
+.github/
+.git/
+*.md
+!README.md
+Dockerfile
+.dockerignore
+tests/
+*.json
+!vercel.json
+*.bat
+*.apk

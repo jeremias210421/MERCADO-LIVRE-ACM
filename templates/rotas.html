@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Rotas - ACM Ibotirama{% endblock %}
+{% block page_title %}Rotas{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
+            {{ rotas | length }} rota{{ 's' if rotas | length != 1 else '' }} cadastrada{{ 's' if rotas | length != 1 else '' }}
+        </p>
+        <a href="{{ url_for('upload.upload_file') }}" class="btn-accent">
+            <i class="bi bi-cloud-upload me-2"></i>Upload Rota
+        </a>
+    </div>
+
+    {% if rotas %}
+    <div class="row g-3">
+        {% for rota in rotas %}
+        {% set m_id = rota_motoristas.get(rota.id) %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card-gestor h-100">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h6 style="font-weight: 800; margin: 0; font-size: 16px; color: var(--info);">
+                            {{ rota.rota }}
+                        </h6>
+                        {% if rota.cidade %}
+                        <span style="font-size: 11px; color: var(--text-muted);">
+                            <i class="bi bi-geo-alt"></i> {{ rota.cidade }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if rota.entregues_hoje > 0 %}
+                        {% if rota.percentual_hoje >= 100 %}
+                        <span class="badge-gestor badge-success">Finalizada</span>
+                        {% elif rota.percentual_hoje >= 50 %}
+                        <span class="badge-gestor badge-info">Em andamento</span>
+                        {% else %}
+                        <span class="badge-gestor badge-warning">Iniciando</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="badge-gestor" style="background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border-color);">Aguardando</span>
+                    {% endif %}
+                </div>
+
+                <!-- Stats -->
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <div style="text-align: center; background: var(--bg-tertiary); border-radius: 10px; padding: 8px;">
+                            <div style="font-weight: 800; font-size: 18px; color: var(--info);">{{ rota.total_pacotes or 0 }}</div>
+                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Pacotes</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div style="text-align: center; background: var(--bg-tertiary); border-radius: 10px; padding: 8px;">
+                            <div style="font-weight: 800; font-size: 18px; color: var(--accent);">{{ rota.entregues_hoje }}</div>
+                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Entregues</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div style="text-align: center; background: var(--bg-tertiary); border-radius: 10px; padding: 8px;">
+                            <div style="font-weight: 800; font-size: 18px; color: var(--text-primary);">{{ rota.total_paradas or 0 }}</div>
+                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Paradas</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress bar -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span style="font-size: 11px; color: var(--text-muted);">Progresso hoje</span>
+                        <span style="font-size: 11px; font-weight: 700; color: {{ 'var(--accent)' if rota.percentual_hoje >= 80 else 'var(--warning)' if rota.percentual_hoje >= 50 else 'var(--text-muted)' }};">
+                            {{ rota.percentual_hoje }}%
+                        </span>
+                    </div>
+                    <div class="progress-gestor">
+                        <div class="progress-gestor-bar" style="width: {{ rota.percentual_hoje }}%; background: {{ 'var(--accent)' if rota.percentual_hoje >= 80 else 'var(--warning)' if rota.percentual_hoje >= 50 else 'var(--text-muted)' }};"></div>
+                    </div>
+                </div>
+
+                <!-- Motorista designado -->
+                <div style="border-top: 1px solid var(--border-color); padding-top: 12px;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Motorista</span>
+                            {% if m_id %}
+                                {% for m in motoristas if m.id == m_id %}
+                                <div style="font-weight: 600; font-size: 14px; color: var(--text-primary);">{{ m.nome }}</div>
+                                {% endfor %}
+                            {% else %}
+                            <div style="font-size: 13px; color: var(--text-muted); font-style: italic;">Não designado</div>
+                            {% endif %}
+                        </div>
+                        <form action="{{ url_for('rotas.designar_motorista', rota_id=rota.id) }}" method="POST" class="d-flex gap-2 align-items-center">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <select name="motorista_id" class="form-control-gestor" style="padding: 6px 10px; font-size: 12px; min-width: 120px;">
+                                <option value="">Selecionar...</option>
+                                {% for m in motoristas %}
+                                <option value="{{ m.id }}" {{ 'selected' if m.id == m_id else '' }}>{{ m.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn-outline-gestor" style="padding: 6px 10px; font-size: 12px;">
+                                <i class="bi bi-link-45deg"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card-gestor text-center py-5">
+        <i class="bi bi-signpost-2" style="font-size: 48px; color: var(--text-muted);"></i>
+        <h5 class="mt-3" style="color: var(--text-secondary);">Nenhuma rota cadastrada</h5>
+        <p style="color: var(--text-muted); font-size: 14px;">Faça upload de arquivos JSON para começar</p>
+        <a href="{{ url_for('upload.upload_file') }}" class="btn-accent">
+            <i class="bi bi-cloud-upload me-2"></i>Fazer Upload
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

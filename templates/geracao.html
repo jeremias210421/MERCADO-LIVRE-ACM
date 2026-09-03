@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Geração - ACM Ibotirama{% endblock %}
+{% block page_title %}Geração de Rotas{% endblock %}
+{% block content %}
+<div class="container-fluid py-3" style="max-width: 720px;">
+  {% if erro %}
+  <div class="alert alert-danger">{{ erro }}</div>
+  {% endif %}
+
+  <div class="card mb-3" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+    <div class="card-body">
+      <h5 class="card-title">Rotas de Ibotirama de hoje</h5>
+      <p class="text-muted small">Gera na nuvem e grava direto no Supabase (~25 min). Acompanhe abaixo.</p>
+      <button id="btn-gerar" class="btn btn-success w-100" onclick="criarJob('gerar_ibotirama')">
+        <i class="bi bi-play-fill"></i> Gerar agora
+      </button>
+    </div>
+  </div>
+
+  <div class="card mb-3" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+    <div class="card-body">
+      <h5 class="card-title">Sessão expirada?</h5>
+      <p class="text-muted small">Digite o código atual do Okta Verify (vale 30s) e envie rápido.</p>
+      <div class="input-group">
+        <input id="totp" type="text" inputmode="numeric" maxlength="6" class="form-control" placeholder="6 dígitos">
+        <button class="btn btn-warning" onclick="renovar()">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <h5>Trabalhos</h5>
+  <div id="jobs">
+    {% for j in jobs %}
+    <div class="card mb-2" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+      <div class="card-body py-2">
+        <span class="badge bg-{{ 'secondary' if j.status=='pendente' else ('info' if j.status=='executando' else ('success' if j.status=='concluido' else 'danger')) }}">{{ j.status }}</span>
+        <strong>{{ j.tipo }}</strong>
+        <small class="text-muted d-block">{{ j.criado_em }}</small>
+        {% if j.log %}<pre class="small mt-1 mb-0" style="white-space: pre-wrap;">{{ j.log[-800:] }}</pre>{% endif %}
+      </div>
+    </div>
+    {% else %}
+    <p class="text-muted">Nenhum trabalho ainda.</p>
+    {% endfor %}
+  </div>
+
+  <h5 class="mt-4">Rotas de hoje (Ibotirama)</h5>
+  <div class="accordion" id="rotas">
+    {% for r in rotas %}
+    <div class="accordion-item" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" style="background: var(--bg-secondary); color: var(--text-primary);" type="button" data-bs-toggle="collapse" data-bs-target="#rota-{{ r.id }}" onclick="carregar('{{ r.id }}')">
+          {{ r.rota }} <span class="badge bg-success ms-2">{{ r.total_pacotes }} pct</span>
+        </button>
+      </h2>
+      <div id="rota-{{ r.id }}" class="accordion-collapse collapse" data-bs-parent="#rotas">
+        <div class="accordion-body" data-body="{{ r.id }}">Carregando...</div>
+      </div>
+    </div>
+    {% else %}
+    <p class="text-muted">Nenhuma rota de Ibotirama hoje ainda.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function criarJob(tipo, payload) {
+  const r = await fetch('/api/jobs', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(Object.assign({tipo}, payload || {}))});
+  const j = await r.json();
+  alert(r.ok ? 'Pedido enviado! Acompanhe abaixo.' : ('Erro: ' + (j.error || r.status)));
+  setTimeout(() => location.reload(), 1500);
+}
+function renovar() {
+  const v = document.getElementById('totp').value.trim();
+  if (v.length !== 6) { alert('Digite os 6 dígitos atuais'); return; }
+  criarJob('renovar_sessao', {totp: v});
+}
+async function carregar(id) {
+  const el = document.querySelector(`[data-body="${id}"]`);
+  if (!el || el.dataset.ok) return;
+  const r = await fetch(`/api/geracao/rotas/${id}/contatos`);
+  const d = await r.json();
+  el.dataset.ok = '1';
+  el.innerHTML = d.paradas.map(p => `
+    <div class="mb-2 pb-2 border-bottom">
+      <strong>${p.sequencia} - ${p.endereco}</strong>
+      ${p.pacotes.map(c => `<div class="small">📦 ${c.codigo_pacote}<br>👤 ${c.nome_comprador || '-'}<br>${c.telefone ? `📞 <a href="tel:${c.telefone}">${c.telefone}</a>` : 'sem telefone'}</div>`).join('')}
+    </div>`).join('');
+}
+setInterval(async () => {
+  try {
+    const r = await fetch('/api/jobs');
+    const jobs = await r.json();
+    if (jobs.some(j => j.status === 'executando' || j.status === 'pendente')) location.reload();
+  } catch (e) {}
+}, 30000);
+</script>
+{% endblock %}

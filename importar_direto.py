@@ -1,22 +1,37 @@
+#!/usr/bin/env python3
+"""
+Script para importar rotas JSON para o Supabase.
+Uso: python importar_direto.py
+"""
+
 import json
 import os
-from supabase import create_client, Client
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
+# Carregar variáveis de ambiente
 load_dotenv()
 
-# Configurações do Supabase (usando variáveis de ambiente)
-from dotenv import load_dotenv
-load_dotenv()
-
+# Configurações do Supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
 
-# Inicializar cliente Supabase
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("ERRO: Variáveis SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY devem estar definidas no .env")
+    sys.exit(1)
+
+try:
+    from supabase import create_client, Client
+except ImportError:
+    print("ERRO: Biblioteca 'supabase' não instalada. Execute: pip install supabase")
+    sys.exit(1)
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+
 def importar_arquivo_json(caminho_arquivo):
-    """Importa dados de um arquivo JSON para o Supabase"""
+    """Importa dados de um arquivo JSON para o Supabase."""
     with open(caminho_arquivo, 'r', encoding='utf-8') as f:
         dados = json.load(f)
     
@@ -26,8 +41,8 @@ def importar_arquivo_json(caminho_arquivo):
     rota_existente = supabase.table('rotas').select('*').eq('rota', dados['rota']).execute()
     
     if rota_existente.data:
-        print(f"  ATENCAO: Rota {dados['rota']} ja existe, pulando...")
-        return {'success': False, 'message': f"Rota {dados['rota']} ja existe"}
+        print(f"  ATENÇÃO: Rota {dados['rota']} já existe, pulando...")
+        return {'success': False, 'message': f"Rota {dados['rota']} já existe"}
     
     # Inserir rota
     rota_data = {
@@ -80,12 +95,14 @@ def importar_arquivo_json(caminho_arquivo):
     print(f"  OK: {total_paradas_inseridas} paradas e {total_pacotes_inseridos} pacotes importados")
     return {'success': True, 'message': f"Rota {dados['rota']} importada com sucesso"}
 
+
 def main():
     # Diretório atual
-    diretorio = os.getcwd()
+    diretorio = Path.cwd()
     
     # Encontrar todos os arquivos JSON
-    arquivos_json = [f for f in os.listdir(diretorio) if f.endswith('.json') and f.startswith(('I', 'J', 'K'))]
+    arquivos_json = [f for f in diretorio.iterdir() 
+                     if f.suffix == '.json' and f.name[0] in ('I', 'J', 'K')]
     
     print(f"Encontrados {len(arquivos_json)} arquivos JSON para importar")
     print("=" * 50)
@@ -95,16 +112,15 @@ def main():
     falha = 0
     
     for arquivo in sorted(arquivos_json):
-        caminho_completo = os.path.join(diretorio, arquivo)
-        print(f"\nProcessando: {arquivo}")
+        print(f"\nProcessando: {arquivo.name}")
         try:
-            resultado = importar_arquivo_json(caminho_completo)
+            resultado = importar_arquivo_json(arquivo)
             if resultado['success']:
                 sucesso += 1
             else:
                 falha += 1
         except Exception as e:
-            print(f"  ERRO: Erro ao processar {arquivo}: {e}")
+            print(f"  ERRO: Erro ao processar {arquivo.name}: {e}")
             falha += 1
     
     print("\n" + "=" * 50)
@@ -113,6 +129,7 @@ def main():
     print(f"  Falhas: {falha}")
     print(f"  Total processados: {sucesso + falha}")
     print("=" * 50)
+
 
 if __name__ == "__main__":
     main()

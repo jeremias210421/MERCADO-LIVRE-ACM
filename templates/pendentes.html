@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Pendentes - ACM Ibotirama{% endblock %}
+{% block page_title %}Pacotes Pendentes{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
+            {{ pendentes | length }} pacote{{ 's' if pendentes | length != 1 else '' }} pendente{{ 's' if pendentes | length != 1 else '' }}
+        </p>
+    </div>
+
+    {% if agrupado %}
+        {% for motorista_nome, pacotes in agrupado.items() %}
+        <div class="card-gestor mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--warning-light); color: var(--warning); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;">
+                        {{ motorista_nome[0] }}
+                    </div>
+                    <div>
+                        <h6 style="font-weight: 700; margin: 0; font-size: 15px;">{{ motorista_nome }}</h6>
+                        <span style="font-size: 11px; color: var(--text-muted);">{{ pacotes | length }} pacote{{ 's' if pacotes | length != 1 else '' }}</span>
+                    </div>
+                </div>
+                <span class="badge-gestor badge-warning">{{ pacotes | length }}</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table-gestor">
+                    <thead>
+                        <tr>
+                            <th>Codigo</th>
+                            <th>Endereco</th>
+                            <th>Rota Original</th>
+                            <th>Data Pendencia</th>
+                            <th>Status</th>
+                            <th class="text-end">Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in pacotes %}
+                        <tr>
+                            <td style="font-weight: 600; font-family: monospace; font-size: 13px;">{{ p.codigo_pacote }}</td>
+                            <td style="color: var(--text-secondary); font-size: 13px;">{{ p.endereco or '-' }}</td>
+                            <td><span style="color: var(--info); font-size: 13px;">{{ p.rota_nome }}</span></td>
+                            <td style="color: var(--text-muted); font-size: 13px;">{{ p.data_pendencia }}</td>
+                            <td>
+                                {% if p.status == 'pendente' %}
+                                <span class="badge-gestor badge-warning">Pendente</span>
+                                {% elif p.status == 'entregue' %}
+                                <span class="badge-gestor badge-success">Entregue</span>
+                                {% else %}
+                                <span class="badge-gestor badge-danger">Cancelado</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if p.status == 'pendente' %}
+                                <form action="{{ url_for('pendentes.marcar_entregue', pendente_id=p.id) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-outline-gestor" style="padding: 4px 10px; font-size: 11px; color: var(--accent); border-color: var(--accent-border);">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('pendentes.cancelar_pendente', pendente_id=p.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancelar este pendente?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-outline-gestor" style="padding: 4px 10px; font-size: 11px; color: var(--danger); border-color: rgba(239,68,68,0.2);">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="card-gestor text-center py-5">
+        <i class="bi bi-check-circle" style="font-size: 48px; color: var(--accent);"></i>
+        <h5 class="mt-3" style="color: var(--text-secondary);">Nenhum pacote pendente</h5>
+        <p style="color: var(--text-muted); font-size: 14px;">
+            Todos os pacotes foram entregues ou ainda não houve conferencia do galpao.
+        </p>
+        <a href="{{ url_for('galpao.conferencia_galpao') }}" class="btn-accent">
+            <i class="bi bi-box-seam me-2"></i>Fazer Conferencia
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
