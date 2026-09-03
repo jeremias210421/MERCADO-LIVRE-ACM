@@ -49,6 +49,7 @@ def create_app():
     csrf.exempt('app.routes.geracao.api_listar_jobs')
     csrf.exempt('app.routes.geracao.api_get_job')
     csrf.exempt('app.routes.geracao.api_rota_contatos')
+    csrf.exempt('app.routes.geracao.api_rota_download')
     csrf.exempt('galpao.galpao_scan')
     csrf.exempt('galpao.galpao_finalizar')
 

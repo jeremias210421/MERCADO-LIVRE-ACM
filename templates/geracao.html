@@ -52,6 +52,9 @@
         <button class="accordion-button collapsed" style="background: var(--bg-secondary); color: var(--text-primary);" type="button" data-bs-toggle="collapse" data-bs-target="#rota-{{ r.id }}" onclick="carregar('{{ r.id }}')">
           {{ r.rota }} <span class="badge bg-success ms-2">{{ r.total_pacotes }} pct</span>
         </button>
+        <a class="btn btn-sm btn-outline-success m-2" href="/api/geracao/rotas/{{ r.id }}/download" download>
+          <i class="bi bi-download"></i> Baixar JSON
+        </a>
       </h2>
       <div id="rota-{{ r.id }}" class="accordion-collapse collapse" data-bs-parent="#rotas">
         <div class="accordion-body" data-body="{{ r.id }}">Carregando...</div>

@@ -89,6 +89,40 @@ def api_get_job(job_id):
         return jsonify({'error': str(e)}), 500
 
 
+@bp.route('/api/geracao/rotas/<rota_id>/download')
+@api_rate_limit(max_requests=30, window_seconds=60)
+def api_rota_download(rota_id):
+    """Baixa a rota em JSON formato I59 + nome/telefone (p/ compartilhar)."""
+    from flask import Response
+    import json
+    if not is_supabase_configured():
+        return jsonify({'error': 'Supabase não configurado'}), 503
+    try:
+        data = get_rota_contatos(rota_id)
+        if not data:
+            return jsonify({'error': 'Rota não encontrada'}), 404
+        paradas = []
+        for p in data['paradas']:
+            cods = [c['codigo_pacote'] for c in p['pacotes']]
+            nomes = [c.get('nome_comprador') or '' for c in p['pacotes']]
+            tels = [c.get('telefone') or '' for c in p['pacotes']]
+            paradas.append({
+                'sequencia': p['sequencia'], 'endereco': p['endereco'],
+                'pacotes': cods, 'tipo_endereco': p.get('tipo_endereco') or 'Residencial',
+                'nome_comprador': nomes[0] if len(set(nomes)) == 1 else nomes,
+                'telefone': tels[0] if len(set(tels)) == 1 else tels,
+            })
+        r = data['rota']
+        doc = {'rota': r['rota'], 'id': r.get('id'), 'totalParadas': len(paradas),
+               'totalPacotes': sum(len(p['pacotes']) for p in paradas),
+               'paradas': paradas, 'observacao': '', 'cidade': r.get('cidade', '')}
+        return Response(json.dumps(doc, ensure_ascii=False, indent=2),
+                        mimetype='application/json',
+                        headers={'Content-Disposition': f"attachment; filename={r['rota']}.json"})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @bp.route('/api/geracao/rotas/<rota_id>/contatos')
 @api_rate_limit(max_requests=60, window_seconds=60)
 def api_rota_contatos(rota_id):
