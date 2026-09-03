@@ -31,13 +31,17 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: auth_state.json
-          key: okta-auth-v1
+          key: okta-auth-v2
 
       - name: Bootstrap auth (primeira vez)
         env:
           OKTA_AUTH_STATE: ${{ secrets.OKTA_AUTH_STATE }}
         run: |
-          if [ ! -f auth_state.json ] && [ -n "$OKTA_AUTH_STATE" ]; then echo "$OKTA_AUTH_STATE" > auth_state.json; fi
+          if ! python3 -c "import json;json.load(open('auth_state.json'))" 2>/dev/null; then
+            if [ -n "$OKTA_AUTH_STATE" ]; then echo "$OKTA_AUTH_STATE" > auth_state.json; echo "bootstrap ok"; else echo "SEM secret e SEM cache valido"; fi
+          else
+            echo "cache/auth valido"
+          fi
 
       - name: Run ETL
         env:
@@ -54,4 +58,4 @@ jobs:
         if: always()
         with:
           path: auth_state.json
-          key: okta-auth-v1
+          key: okta-auth-v2
