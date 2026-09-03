@@ -74,7 +74,8 @@ except Exception:
     log("sem coluna pacotes.cidade; seguindo sem ela")
 
 import uuid
-def upsert_rota(rota_nome, id_original, cidade, paradas):
+def upsert_rota(rota_nome, id_original, cidade, paradas, observacao=""):
+    paradas = list(paradas)
     total_pac = sum(len(p["pacotes"]) for p in paradas)
     rota_id = None
     for col, val in (("id_original", id_original), ("rota", rota_nome)):
@@ -90,12 +91,13 @@ def upsert_rota(rota_nome, id_original, cidade, paradas):
         rota_id = str(uuid.uuid4())
         ins = sb.table("rotas").insert({"id": rota_id, "rota": rota_nome, "id_original": id_original,
             "total_paradas": len(paradas), "total_pacotes": total_pac,
-            "observacao": "", "cidade": cidade}).execute()
+            "observacao": observacao, "cidade": cidade}).execute()
         if ins.data:
             rota_id = ins.data[0]["id"]
     else:
         sb.table("rotas").update({"total_paradas": len(paradas), "total_pacotes": total_pac,
-            "cidade": cidade, "atualizado_em": datetime.utcnow().isoformat()}).eq("id", rota_id).execute()
+            "cidade": cidade, "observacao": observacao,
+            "atualizado_em": datetime.utcnow().isoformat()}).eq("id", rota_id).execute()
     novos = 0
     for idx, par in enumerate(paradas):
         seq = par["sequencia"]
@@ -183,20 +185,29 @@ def run_daily(api_post, api_get, fetch_dets, job_note=""):
         for x in dets:
             x["cidade"] = "Ibotirama"
         upsert_rota(nomes[rid], rid, "Ibotirama", monta_paradas(dets))
-    # compartilhadas: pacotes de Ibotirama nas demais rotas de hoje
+    # compartilhadas: rotas de hoje com pacotes de Ibotirama (importa COMPLETA)
+    from collections import Counter
     resto = [rid for rid in nomes if rid not in ib]
     todos = [(rid, pid) for rid in resto for pid in grupos.get(rid, [])]
     log(f"rastreando {len(todos)} pacotes de outras rotas...")
-    ach = {}
+    det_por_pid = {}
     for i in range(0, len(todos), 15):
         lote = todos[i:i + 15]
         for r in fetch_dets([pid for _, pid in lote]):
-            if "ibotirama" in norm(r.get("cidade", "")):
-                rid = next(rr for rr, pp in lote if pp == r.get("pid"))
-                ach.setdefault(rid, []).append(r)
+            det_por_pid[r.get("pid")] = r
+    ach = {}
+    for rid, pid in todos:
+        if "ibotirama" in norm(det_por_pid.get(pid, {}).get("cidade", "")):
+            ach.setdefault(rid, []).append(pid)
     log(f"compartilhadas: {[(nomes.get(r, r), len(v)) for r, v in ach.items()]}")
-    for rid, dets in ach.items():
-        upsert_rota(nomes.get(rid, rid), rid, "Ibotirama (compartilhada)", monta_paradas(dets))
+    for rid in ach:
+        dets = [det_por_pid[pid] for pid in grupos.get(rid, []) if pid in det_por_pid]
+        if not dets:
+            continue
+        maioria = Counter(d.get("cidade", "?") for d in dets).most_common(1)[0][0]
+        n_ib = len(ach[rid])
+        upsert_rota(nomes.get(rid, rid), rid, maioria, monta_paradas(dets),
+                    observacao=f"Compartilhada: {n_ib} pacotes de Ibotirama")
     log("run_daily ok")
 
 def relogin_com_seed(page, context):
@@ -283,13 +294,13 @@ with sync_playwright() as pw:
     log(f"jobs pendentes: {len(pend)}")
     for job in pend:
         set_job(job["id"], status="executando", log="iniciado na nuvem")
+    if pend or "--only-jobs" not in sys.argv:
         try:
-            run_daily(api_post, api_get, fetch_dets, job_note=f"job {str(job['id'])[:8]}")
-            set_job(job["id"], status="concluido", log="rotas de Ibotirama geradas")
+            run_daily(api_post, api_get, fetch_dets, job_note=f"{len(pend)} job(s)")
+            for job in pend:
+                set_job(job["id"], status="concluido", log="rotas de Ibotirama geradas")
         except Exception as e:
-            set_job(job["id"], status="erro", log=str(e)[:1000])
-
-    if "--only-jobs" not in sys.argv:
-        run_daily(api_post, api_get, fetch_dets, job_note="rotina diaria")
+            for job in pend:
+                set_job(job["id"], status="erro", log=str(e)[:1000])
     browser.close()
 log("FIM")
