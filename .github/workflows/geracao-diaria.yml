@@ -2,7 +2,7 @@ name: Geracao Ibotirama (nuvem)
 
 on:
   schedule:
-    - cron: '2 3 * * *' # 00:02 BRT todos os dias
+    - cron: '0 22 * * *' # 19:00 BRT todos os dias
   repository_dispatch:
     types: [gerar]
   workflow_dispatch:
