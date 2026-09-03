@@ -34,11 +34,10 @@ jobs:
           key: okta-auth-v1
 
       - name: Bootstrap auth (primeira vez)
-        if: ${{ secrets.OKTA_AUTH_STATE != '' }}
         env:
           OKTA_AUTH_STATE: ${{ secrets.OKTA_AUTH_STATE }}
         run: |
-          if [ ! -f auth_state.json ]; then echo "$OKTA_AUTH_STATE" > auth_state.json; fi
+          if [ ! -f auth_state.json ] && [ -n "$OKTA_AUTH_STATE" ]; then echo "$OKTA_AUTH_STATE" > auth_state.json; fi
 
       - name: Run ETL
         env:
