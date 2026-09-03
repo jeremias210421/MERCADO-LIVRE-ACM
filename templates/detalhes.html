@@ -90,15 +90,21 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <div class="d-flex flex-wrap gap-1">
+                                    <div class="d-flex flex-column gap-1">
                                         {% for pacote in parada.pacotes %}
-                                        <span class="badge bg-light text-dark border">{{ pacote.codigo_pacote }}</span>
+                                        <div>
+                                            <span class="badge bg-light text-dark border">{{ pacote.codigo_pacote }}</span>
+                                            {% if pacote.nome_comprador %}<small class="text-muted"> {{ pacote.nome_comprador }}</small>{% endif %}
+                                            {% if pacote.telefone %}<a href="tel:{{ pacote.telefone }}" class="badge bg-success text-decoration-none"><i class="bi bi-telephone"></i> {{ pacote.telefone }}</a>{% endif %}
+                                        </div>
                                         {% endfor %}
                                     </div>
                                 </td>
                                 <td><span class="badge bg-info">{{ parada.pacotes|length }}</span></td>
                                 <td>
-                                    <a href="https://wa.me/?text={{ 'Rota: ' + rota.rota + '%0AParada: ' + parada.sequencia + '%0AEndereço: ' + parada.endereco + '%0APacotes: ' + (parada.pacotes|map(attribute='codigo_pacote')|join(', '))|urlencode }}" 
+                                    {% set ns = namespace(txt='') %}
+                                    {% for pacote in parada.pacotes %}{% set ns.txt = ns.txt + pacote.codigo_pacote + ((' (' + pacote.telefone + ')') if pacote.telefone else '') + (', ' if not loop.last else '') %}{% endfor %}
+                                    <a href="https://wa.me/?text={{ ('Rota: ' + rota.rota + '%0AParada: ' + parada.sequencia + '%0AEndereço: ' + parada.endereco + '%0APacotes: ' + ns.txt)|urlencode }}" 
                                        target="_blank" 
                                        class="btn btn-success btn-sm">
                                         <i class="bi bi-whatsapp"></i> Enviar
