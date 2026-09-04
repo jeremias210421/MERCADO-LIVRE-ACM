@@ -46,13 +46,26 @@ def scan_pacote(codigo: str, sessao_id: str) -> dict[str, Any]:
         if r.data:
             rota_nome = r.data.get('rota')
 
+    # Buyer contact (alocado pelo ETL)
+    comprador_nome = None
+    comprador_telefone = None
+    try:
+        pc = supabase.table('pacotes').select('nome_comprador,telefone').eq('codigo_pacote', codigo).limit(1).execute()
+        if pc.data:
+            comprador_nome = pc.data[0].get('nome_comprador')
+            comprador_telefone = pc.data[0].get('telefone')
+    except Exception:
+        pass
+
     return {
         'success': True,
         'encontrado': encontrado,
         'codigo': codigo,
         'rota_nome': rota_nome,
         'motorista_nome': motorista_nome,
-        'endereco': endereco
+        'endereco': endereco,
+        'comprador_nome': comprador_nome,
+        'comprador_telefone': comprador_telefone
     }
 
 

@@ -184,6 +184,8 @@
                             <i class="bi bi-signpost-2"></i> Rota: <strong>${data.rota_nome || 'N/A'}</strong>
                             &nbsp;&nbsp;<i class="bi bi-person"></i> Motorista: <strong>${data.motorista_nome || 'N/A'}</strong>
                             ${data.endereco ? `<br><i class="bi bi-geo-alt"></i> ${data.endereco}` : ''}
+                            ${data.comprador_nome ? `<br><i class="bi bi-person"></i> ${data.comprador_nome}` : ''}
+                            ${data.comprador_telefone ? `<br><i class="bi bi-telephone"></i> <a href="tel:${data.comprador_telefone}">${data.comprador_telefone}</a>` : ''}
                         </div>` : ''}
                     </div>`;
 
