@@ -43,21 +43,36 @@ JS_DET = """async ({lote, csrf}) => {
     return out;
 }"""
 
+def norm_end(e):
+    import re as _re
+    e = _re.sub(r"[^a-z0-9 ]", "", (e or "").lower())
+    return _re.sub(r"\s+", " ", e).strip()
+
+
 def monta_paradas(dets):
-    paradas, ordem = {}, []
+    vistos = set()
+    unicos = []
     for det in dets:
         if "erro" in det:
             continue
-        chave = det["end"] or f"SEM ENDERECO {det['pid']}"
+        pid = det.get("pid", "")
+        if pid in vistos:
+            continue
+        vistos.add(pid)
+        unicos.append(det)
+    paradas, ordem = {}, []
+    for det in unicos:
+        chave = norm_end(det["end"]) or f"sem endereco {det['pid']}"
         if chave not in paradas:
-            paradas[chave] = {"sequencia": "", "endereco": chave, "pacotes": [],
+            paradas[chave] = {"sequencia": "", "endereco": (det["end"] or "").strip(), "pacotes": [],
                               "tipo_endereco": det["tipo"] or "Residencial", "contatos": []}
             ordem.append(chave)
         elif det["tipo"].lower().startswith("comer"):
             paradas[chave]["tipo_endereco"] = det["tipo"]
-        paradas[chave]["pacotes"].append(det["pid"])
-        paradas[chave]["contatos"].append({"pacote": det["pid"], "nome_comprador": det["nome"],
-                                           "telefone": det["tel"], "cidade": det.get("cidade", "")})
+        if det["pid"] not in paradas[chave]["pacotes"]:
+            paradas[chave]["pacotes"].append(det["pid"])
+            paradas[chave]["contatos"].append({"pacote": det["pid"], "nome_comprador": det["nome"],
+                                               "telefone": det["tel"], "cidade": det.get("cidade", "")})
     lista = [paradas[k] for k in ordem]
     for i, par in enumerate(lista, 1):
         par["sequencia"] = f"{i:02d}" if i < len(lista) else "-"
