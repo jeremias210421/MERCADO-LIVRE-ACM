@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Rastrear Pacote - ACM Ibotirama{% endblock %}
+{% block page_title %}Rastrear Pacote{% endblock %}
+
+{% block content %}
+<div class="fade-in" style="max-width: 760px;">
+    <div class="card-gestor mb-4">
+        <form method="GET" action="{{ url_for('rastreio.buscar_pacote') }}" class="d-flex gap-2">
+            <input name="q" value="{{ code or '' }}" placeholder="Digite o código do pacote..." class="form-control-gestor" style="flex: 1;" autocomplete="off" autofocus>
+            <button type="submit" class="btn-accent" style="white-space: nowrap;"><i class="bi bi-search me-1"></i>Rastrear</button>
+        </form>
+    </div>
+
+    {% if code and not dados %}
+    <div class="card-gestor text-center py-5">
+        <i class="bi bi-question-circle" style="font-size: 40px; color: var(--text-muted);"></i>
+        <h5 class="mt-3" style="color: var(--text-secondary);">Nada encontrado</h5>
+        <p style="color: var(--text-muted); font-size: 13px;">Nenhum registro de <strong>{{ code }}</strong> no sistema.</p>
+    </div>
+    {% endif %}
+
+    {% if dados and dados.eventos %}
+    <div class="card-gestor mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <div style="font-family: monospace; font-weight: 800; font-size: 20px;">{{ dados.code }}</div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                    {% if dados.rota_atual %}<span style="color: var(--info); font-weight: 700;">{{ dados.rota_atual }}</span>{% endif %}
+                    {% if dados.motorista_atual %}<span style="margin-left: 8px;">👤 {{ dados.motorista_atual }}</span>{% endif %}
+                </div>
+            </div>
+            <span class="badge-gestor {% if dados.status == 'Entregue ✔' %}badge-success{% elif dados.status == 'Pendente' %}badge-warning{% elif dados.status == 'No galpão' %}badge-info{% else %}badge-gestor{% endif %}" style="font-size: 12px;">{{ dados.status }}</span>
+        </div>
+        {% if dados.produto_descricao or dados.nome_comprador or dados.telefone %}
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light); font-size: 13px;">
+            {% if dados.produto_descricao %}<div>📦 <strong>{{ dados.produto_descricao }}</strong>{% if dados.produto_valor %} <span style="color: var(--text-muted);">• R$ {{ dados.produto_valor }}</span>{% endif %}</div>{% endif %}
+            {% if dados.nome_comprador or dados.telefone %}
+            <div style="margin-top: 4px; color: var(--text-secondary);">👤 {{ dados.nome_comprador or '-' }}{% if dados.telefone %} • <a href="tel:{{ dados.telefone }}">{{ dados.telefone }}</a>{% endif %}</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div style="position: relative; padding-left: 28px;">
+        <div style="position: absolute; left: 9px; top: 8px; bottom: 8px; width: 2px; background: var(--border-light);"></div>
+        {% for e in dados.eventos %}
+        <div style="position: relative; margin-bottom: 16px;">
+            <div style="position: absolute; left: -25px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: {% if e.tipo == 'entregue' %}var(--accent){% elif e.tipo == 'pendente' %}var(--warning){% elif e.tipo == 'galpao' %}var(--info){% elif e.tipo == 'rua' %}var(--accent){% else %}var(--text-muted){% endif %}; border: 2px solid var(--bg-primary);"></div>
+            <div class="card-gestor" style="padding: 14px 18px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <strong style="font-size: 14px;">{{ e.titulo }}</strong>
+                    <span style="font-size: 11px; color: var(--text-muted); font-family: monospace;">{{ e.quando }}</span>
+                </div>
+                {% if e.detalhe %}<div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">{{ e.detalhe }}</div>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
