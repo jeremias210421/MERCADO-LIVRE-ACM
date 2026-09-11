@@ -1,8 +1,9 @@
 name: Geracao Ibotirama (nuvem)
 
 on:
-  schedule:
-    - cron: '0 22 * * *' # 19:00 BRT todos os dias
+  # DESLIGADO: sem OKTA — enriquecimento agora é só pela planilha (Looker).
+  # schedule:
+  #   - cron: '0 22 * * *' # 19:00 BRT todos os dias
   repository_dispatch:
     types: [gerar]
   workflow_dispatch:
