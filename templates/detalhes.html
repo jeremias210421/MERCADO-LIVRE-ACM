@@ -96,6 +96,7 @@
                                             <span class="badge bg-light text-dark border">{{ pacote.codigo_pacote }}</span>
                                             {% if pacote.nome_comprador %}<small class="text-muted"> {{ pacote.nome_comprador }}</small>{% endif %}
                                             {% if pacote.telefone %}<a href="tel:{{ pacote.telefone }}" class="badge bg-success text-decoration-none"><i class="bi bi-telephone"></i> {{ pacote.telefone }}</a>{% endif %}
+                                            {% if pacote.descricao_produto %}<div><small class="text-secondary">📦 {{ pacote.descricao_produto }}{% if pacote.valor_produto %} • R$ {{ pacote.valor_produto }}{% endif %}</small></div>{% endif %}
                                         </div>
                                         {% endfor %}
                                     </div>

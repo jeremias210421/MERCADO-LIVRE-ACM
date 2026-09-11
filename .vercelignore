@@ -31,6 +31,8 @@ tests/
 !app/
 !templates/
 !migrations/
+!data/
+!data/descricao_map.json
 !supabase/
 !*.sql
 !migrate.py
