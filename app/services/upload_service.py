@@ -99,22 +99,22 @@ def importar_json_para_supabase(dados_json: dict) -> dict[str, Any]:
         from app.timezone import hoje_sp, agora_sp
         hoje = hoje_sp().isoformat()
         rota_id = None
-        # tenta por id_original + data de hoje
+        # tenta por id_original + data de hoje (session_date manda; criado_em é fallback)
         if id_original:
             try:
-                r = supabase.table('rotas').select('id,criado_em,created_at').eq('id_original', id_original).execute()
+                r = supabase.table('rotas').select('id,criado_em,session_date').eq('id_original', id_original).execute()
                 for row in (r.data or []):
-                    criado = (row.get('criado_em') or row.get('created_at') or '')[:10]
-                    if criado == hoje:
+                    dia = (row.get('session_date') or '')[:10] or (row.get('criado_em') or '')[:10]
+                    if dia == hoje:
                         rota_id = row['id']; break
             except: pass
         # tenta por nome + data de hoje
         if not rota_id:
             try:
-                r = supabase.table('rotas').select('id,criado_em,created_at').eq('rota', rota_nome).execute()
+                r = supabase.table('rotas').select('id,criado_em,session_date').eq('rota', rota_nome).execute()
                 for row in (r.data or []):
-                    criado = (row.get('criado_em') or row.get('created_at') or '')[:10]
-                    if criado == hoje:
+                    dia = (row.get('session_date') or '')[:10] or (row.get('criado_em') or '')[:10]
+                    if dia == hoje:
                         rota_id = row['id']; break
             except: pass
 
