@@ -1,0 +1,39 @@
+name: Looker Descricoes (nuvem)
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 21:00 BRT todos os dias
+  workflow_dispatch:
+    inputs:
+      limite:
+        description: 'Maximo de IDs por execucao'
+        required: false
+        default: '200'
+
+jobs:
+  looker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install -r etl/requirements-etl.txt
+          playwright install chromium --with-deps
+
+      - name: Run incremental
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GOOGLE_COOKIES: ${{ secrets.GOOGLE_COOKIES }}
+          LIMITE: ${{ inputs.limite || '200' }}
+        run: python etl/looker_incremental.py
