@@ -26,7 +26,7 @@ sb = create_client(os.getenv("SUPABASE_URL"),
                    os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
 
 
-def log(m):
+def log(m, **kw):
     print(m, flush=True)
 
 
