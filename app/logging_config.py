@@ -1,11 +1,13 @@
 """
 Configuração de logging estruturado para produção com structlog.
 """
+
 import logging
-import sys
 import os
-from datetime import datetime
+import sys
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
+
 import structlog
 
 
@@ -25,7 +27,7 @@ def setup_logging(app):
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
             structlog.processors.UnicodeDecoder(),
-            structlog.processors.JSONRenderer()
+            structlog.processors.JSONRenderer(),
         ],
         context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
@@ -36,32 +38,38 @@ def setup_logging(app):
     # Handler para console (stdout) - JSON em produção, pretty em dev
     console_handler = logging.StreamHandler(sys.stdout)
     if app.debug:
-        console_handler.setFormatter(logging.Formatter(
-            '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        ))
+        console_handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        )
     else:
-        console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-            processor=structlog.processors.JSONRenderer()
-        ))
+        console_handler.setFormatter(
+            structlog.stdlib.ProcessorFormatter(
+                processor=structlog.processors.JSONRenderer()
+            )
+        )
     console_handler.setLevel(log_level)
 
     # Handler para arquivo - pular em Vercel (read-only filesystem)
-    is_vercel = os.environ.get('VERCEL') == '1'
+    is_vercel = os.environ.get("VERCEL") == "1"
     handlers = [console_handler]
 
     if not is_vercel:
         # Local development - usar arquivo
-        if not os.path.exists('logs'):
-            os.makedirs('logs')
+        if not os.path.exists("logs"):
+            os.makedirs("logs")
 
-        log_file = f'logs/app_{datetime.now().strftime("%Y%m%d")}.log'
+        log_file = f"logs/app_{datetime.now(timezone.utc).strftime('%Y%m%d')}.log"
         file_handler = RotatingFileHandler(
-            log_file, maxBytes=10*1024*1024, backupCount=30, encoding='utf-8'
+            log_file, maxBytes=10 * 1024 * 1024, backupCount=30, encoding="utf-8"
         )
-        file_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-            processor=structlog.processors.JSONRenderer()
-        ))
+        file_handler.setFormatter(
+            structlog.stdlib.ProcessorFormatter(
+                processor=structlog.processors.JSONRenderer()
+            )
+        )
         file_handler.setLevel(log_level)
         handlers.append(file_handler)
     else:
@@ -74,20 +82,20 @@ def setup_logging(app):
     root_logger.handlers = handlers
 
     # Loggers específicos
-    logging.getLogger('werkzeug').setLevel(logging.WARNING)
-    logging.getLogger('supabase').setLevel(logging.WARNING)
-    logging.getLogger('httpx').setLevel(logging.WARNING)
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    logging.getLogger("supabase").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
-    app.logger.info('Logging estruturado configurado com sucesso')
+    app.logger.info("Logging estruturado configurado com sucesso")
 
     return root_logger
 
 
 # Instâncias de logger estruturado para uso nos módulos
-dashboard_logger = structlog.get_logger('app.dashboard')
-entregadores_logger = structlog.get_logger('app.entregadores')
-galpao_logger = structlog.get_logger('app.galpao')
-pendentes_logger = structlog.get_logger('app.pendentes')
-rotas_logger = structlog.get_logger('app.rotas')
-upload_logger = structlog.get_logger('app.upload')
-api_logger = structlog.get_logger('app.api')
+dashboard_logger = structlog.get_logger("app.dashboard")
+entregadores_logger = structlog.get_logger("app.entregadores")
+galpao_logger = structlog.get_logger("app.galpao")
+pendentes_logger = structlog.get_logger("app.pendentes")
+rotas_logger = structlog.get_logger("app.rotas")
+upload_logger = structlog.get_logger("app.upload")
+api_logger = structlog.get_logger("app.api")

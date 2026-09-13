@@ -2,13 +2,20 @@
 Pagina de geracao (controle pelo celular) + API de jobs.
 A pagina pede, o agente no PC executa.
 """
+
 import os
-from flask import Blueprint, render_template, request, jsonify
-from app.supabase_client import is_supabase_configured
+
+from flask import Blueprint, jsonify, render_template, request
+
 from app.rate_limit import api_rate_limit
 from app.services.jobs_service import (
-    criar_job, listar_jobs, get_job, get_rotas_hoje_ibotirama, get_rota_contatos,
+    criar_job,
+    get_job,
+    get_rota_contatos,
+    get_rotas_hoje_ibotirama,
+    listar_jobs,
 )
+from app.supabase_client import is_supabase_configured
 
 
 def disparar_github(job_id: str) -> bool:
@@ -19,9 +26,13 @@ def disparar_github(job_id: str) -> bool:
         return False
     try:
         import httpx
+
         r = httpx.post(
             f"https://api.github.com/repos/{repo}/dispatches",
-            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+            },
             json={"event_type": "gerar", "client_payload": {"job_id": job_id}},
             timeout=10,
         )
@@ -29,10 +40,11 @@ def disparar_github(job_id: str) -> bool:
     except Exception:
         return False
 
-bp = Blueprint('geracao', __name__)
+
+bp = Blueprint("geracao", __name__)
 
 
-@bp.route('/geracao')
+@bp.route("/geracao")
 def pagina_geracao():
     """Pagina de controle (mobile)."""
     rotas, jobs, erro = [], [], None
@@ -42,97 +54,118 @@ def pagina_geracao():
             jobs = listar_jobs(10)
         except Exception as e:
             erro = str(e)
-    return render_template('geracao.html', rotas=rotas, jobs=jobs, erro=erro)
+    return render_template("geracao.html", rotas=rotas, jobs=jobs, erro=erro)
 
 
-@bp.route('/api/jobs', methods=['POST'])
+@bp.route("/api/jobs", methods=["POST"])
 @api_rate_limit(max_requests=20, window_seconds=60)
 def api_criar_job():
     """Enfileira um trabalho: {tipo: gerar_ibotirama|renovar_sessao, totp?}."""
     if not is_supabase_configured():
-        return jsonify({'error': 'Supabase não configurado'}), 503
+        return jsonify({"error": "Supabase não configurado"}), 503
     try:
         data = request.get_json() or {}
-        job = criar_job(data.get('tipo', ''), {'totp': str(data.get('totp') or '')} if data.get('totp') else {})
-        job['nuvem_avisada'] = disparar_github(job.get('id', '')) if data.get('tipo') == 'gerar_ibotirama' else False
+        job = criar_job(
+            data.get("tipo", ""),
+            {"totp": str(data.get("totp") or "")} if data.get("totp") else {},
+        )
+        job["nuvem_avisada"] = (
+            disparar_github(job.get("id", ""))
+            if data.get("tipo") == "gerar_ibotirama"
+            else False
+        )
         return jsonify(job), 201
     except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@bp.route('/api/jobs')
+@bp.route("/api/jobs")
 @api_rate_limit(max_requests=60, window_seconds=60)
 def api_listar_jobs():
     """Ultimos jobs com status."""
     if not is_supabase_configured():
-        return jsonify({'error': 'Supabase não configurado'}), 503
+        return jsonify({"error": "Supabase não configurado"}), 503
     try:
         return jsonify(listar_jobs(10))
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@bp.route('/api/jobs/<job_id>')
+@bp.route("/api/jobs/<job_id>")
 @api_rate_limit(max_requests=60, window_seconds=60)
 def api_get_job(job_id):
     """Status de um job."""
     if not is_supabase_configured():
-        return jsonify({'error': 'Supabase não configurado'}), 503
+        return jsonify({"error": "Supabase não configurado"}), 503
     try:
         job = get_job(job_id)
         if not job:
-            return jsonify({'error': 'Job não encontrado'}), 404
+            return jsonify({"error": "Job não encontrado"}), 404
         return jsonify(job)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@bp.route('/api/geracao/rotas/<rota_id>/download')
+@bp.route("/api/geracao/rotas/<rota_id>/download")
 @api_rate_limit(max_requests=30, window_seconds=60)
 def api_rota_download(rota_id):
     """Baixa a rota em JSON formato I59 + nome/telefone (p/ compartilhar)."""
-    from flask import Response
     import json
+
+    from flask import Response
+
     if not is_supabase_configured():
-        return jsonify({'error': 'Supabase não configurado'}), 503
+        return jsonify({"error": "Supabase não configurado"}), 503
     try:
         data = get_rota_contatos(rota_id)
         if not data:
-            return jsonify({'error': 'Rota não encontrada'}), 404
+            return jsonify({"error": "Rota não encontrada"}), 404
         paradas = []
-        for p in data['paradas']:
-            cods = [c['codigo_pacote'] for c in p['pacotes']]
-            nomes = [c.get('nome_comprador') or '' for c in p['pacotes']]
-            tels = [c.get('telefone') or '' for c in p['pacotes']]
-            paradas.append({
-                'sequencia': p['sequencia'], 'endereco': p['endereco'],
-                'pacotes': cods, 'tipo_endereco': p.get('tipo_endereco') or 'Residencial',
-                'nome_comprador': nomes[0] if len(set(nomes)) == 1 else nomes,
-                'telefone': tels[0] if len(set(tels)) == 1 else tels,
-            })
-        r = data['rota']
-        doc = {'rota': r['rota'], 'id': r.get('id'), 'totalParadas': len(paradas),
-               'totalPacotes': sum(len(p['pacotes']) for p in paradas),
-               'paradas': paradas, 'observacao': '', 'cidade': r.get('cidade', '')}
-        return Response(json.dumps(doc, ensure_ascii=False, indent=2),
-                        mimetype='application/json',
-                        headers={'Content-Disposition': f"attachment; filename={r['rota']}.json"})
+        for p in data["paradas"]:
+            cods = [c["codigo_pacote"] for c in p["pacotes"]]
+            nomes = [c.get("nome_comprador") or "" for c in p["pacotes"]]
+            tels = [c.get("telefone") or "" for c in p["pacotes"]]
+            paradas.append(
+                {
+                    "sequencia": p["sequencia"],
+                    "endereco": p["endereco"],
+                    "pacotes": cods,
+                    "tipo_endereco": p.get("tipo_endereco") or "Residencial",
+                    "nome_comprador": nomes[0] if len(set(nomes)) == 1 else nomes,
+                    "telefone": tels[0] if len(set(tels)) == 1 else tels,
+                }
+            )
+        r = data["rota"]
+        doc = {
+            "rota": r["rota"],
+            "id": r.get("id"),
+            "totalParadas": len(paradas),
+            "totalPacotes": sum(len(p["pacotes"]) for p in paradas),
+            "paradas": paradas,
+            "observacao": "",
+            "cidade": r.get("cidade", ""),
+        }
+        return Response(
+            json.dumps(doc, ensure_ascii=False, indent=2),
+            mimetype="application/json",
+            headers={"Content-Disposition": f"attachment; filename={r['rota']}.json"},
+        )
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@bp.route('/api/geracao/rotas/<rota_id>/contatos')
+@bp.route("/api/geracao/rotas/<rota_id>/contatos")
 @api_rate_limit(max_requests=60, window_seconds=60)
 def api_rota_contatos(rota_id):
     """Paradas da rota com nome/telefone (expansao na pagina)."""
     if not is_supabase_configured():
-        return jsonify({'error': 'Supabase não configurado'}), 503
+        return jsonify({"error": "Supabase não configurado"}), 503
     try:
         data = get_rota_contatos(rota_id)
         if not data:
-            return jsonify({'error': 'Rota não encontrada'}), 404
+            return jsonify({"error": "Rota não encontrada"}), 404
         return jsonify(data)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500

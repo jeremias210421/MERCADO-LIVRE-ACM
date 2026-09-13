@@ -1,0 +1,12 @@
+[tool.ruff.lint]
+# Estilo intencional do projeto: best-effort com fallbacks silenciosos
+# (Supabase/RLS intermitente no serverless). Nao quebrar isso no lint.
+ignore = [
+  "BLE001",  # blind-except: fallback proposital
+  "S110",    # try-except-pass: fallback proposital
+  "S112",    # try-except-continue: fallback proposital
+  "E722",    # bare-except: legado, tratar aos poucos
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true

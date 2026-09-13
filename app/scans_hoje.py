@@ -6,7 +6,9 @@ Colunas REAIS de scans (produção): code/route/operator_name/session_date
 Por isso toda contagem "de hoje" usa session_date == hoje-SP + route,
 e atribuição de entregador usa motorista_id OU operator_name→motoristas.
 """
+
 from collections import Counter
+
 from app.timezone import normaliza_data_iso
 
 
@@ -65,6 +67,42 @@ def fetch_scans_tudo(supabase, cols: str = "code,route,session_date") -> list[di
     return out
 
 
+def fetch_scans_por_sessoes(
+    supabase, sessoes: set[str], cols: str = "code,route,session_date"
+) -> list[dict]:
+    """Bipagens só das sessões pedidas (ex: session_date das rotas listadas).
+    1 query com IN em vez da tabela inteira paginada."""
+    lista = sorted(s for s in sessoes if s)
+    if not lista:
+        return []
+    out: list[dict] = []
+    try:
+        # IN com muitas datas: fatia de 100
+        for i in range(0, len(lista), 100):
+            lote = lista[i : i + 100]
+            off = 0
+            while True:
+                res = (
+                    supabase.table("scans")
+                    .select(cols)
+                    .in_("session_date", lote)
+                    .range(off, off + 999)
+                    .execute()
+                )
+                data = _rows(res)
+                if not data:
+                    break
+                out.extend(data)
+                if len(data) < 1000:
+                    break
+                off += 1000
+                if off >= 20000:
+                    break
+    except Exception:
+        pass
+    return out
+
+
 def mapa_rota_sessao(rows: list[dict]) -> dict:
     """{(ROTA, YYYY-MM-DD): set(codes)} a partir de linhas code/route/session_date."""
     out: dict = {}
@@ -91,6 +129,7 @@ def distinct_por_rota(rows: list[dict]) -> dict[str, set]:
 
 def _sem_acento(s: str) -> str:
     import unicodedata
+
     return "".join(
         c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
     )
@@ -137,21 +176,37 @@ def enriquecer_endereco(supabase, rows: list[dict]) -> list[dict]:
     2 queries batch, independente do nº de linhas.
     """
     try:
-        codes = list({norm_code(r.get("code")) for r in rows if norm_code(r.get("code"))})
-        sem_end = [r for r in rows if not r.get("endereco") and norm_code(r.get("code"))]
+        codes = list(
+            {norm_code(r.get("code")) for r in rows if norm_code(r.get("code"))}
+        )
+        sem_end = [
+            r for r in rows if not r.get("endereco") and norm_code(r.get("code"))
+        ]
         if not codes or not sem_end:
             return rows
         pacs: dict = {}
         for i in range(0, len(codes), 200):
-            chunk = codes[i:i + 200]
-            res = supabase.table("pacotes").select("codigo_pacote,parada_id").in_("codigo_pacote", chunk).limit(5000).execute()
+            chunk = codes[i : i + 200]
+            res = (
+                supabase.table("pacotes")
+                .select("codigo_pacote,parada_id")
+                .in_("codigo_pacote", chunk)
+                .limit(5000)
+                .execute()
+            )
             for p in _rows(res):
                 pacs[norm_code(p.get("codigo_pacote"))] = p.get("parada_id")
         pids = list({v for v in pacs.values() if v})
         ends: dict = {}
         for i in range(0, len(pids), 200):
-            chunk = pids[i:i + 200]
-            res = supabase.table("paradas").select("id,endereco").in_("id", chunk).limit(5000).execute()
+            chunk = pids[i : i + 200]
+            res = (
+                supabase.table("paradas")
+                .select("id,endereco")
+                .in_("id", chunk)
+                .limit(5000)
+                .execute()
+            )
             for p in _rows(res):
                 if p.get("id") and p.get("endereco"):
                     ends[p["id"]] = p["endereco"]
@@ -176,7 +231,14 @@ def motorista_id_da_linha(row: dict, por_nome: dict) -> str | None:
     return por_nome.get(nome) or por_nome.get(_sem_acento(nome))
 
 
-def scans_do_motorista(supabase, motorista_id: str, nome: str, date_iso: str | None = None, limit: int = 5000, por_nome: dict | None = None) -> list[dict]:
+def scans_do_motorista(
+    supabase,
+    motorista_id: str,
+    nome: str,
+    date_iso: str | None = None,
+    limit: int = 5000,
+    por_nome: dict | None = None,
+) -> list[dict]:
     """Bipagens atribuídas ao entregador, com dedupe por pacote.
 
     Usa o mesmo motor de atribuição do resto do sistema (id direto, nome
@@ -231,10 +293,13 @@ def contagem_hoje_por_motorista(rows: list[dict], por_nome: dict) -> Counter:
     return cnt
 
 
-def tendencia_por_session_date(supabase, dias: int = 7, limit: int = 10000) -> tuple[list[str], list[int]]:
+def tendencia_por_session_date(
+    supabase, dias: int = 7, limit: int = 10000
+) -> tuple[list[str], list[int]]:
     """Últimos N dias (SP) agrupados por session_date normalizado. 1 query."""
-    from app.timezone import hoje_sp
     from datetime import timedelta
+
+    from app.timezone import hoje_sp
 
     labels: list[str] = []
     ordre: list[str] = []

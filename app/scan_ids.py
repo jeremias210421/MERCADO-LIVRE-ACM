@@ -5,6 +5,7 @@ Garante que o mesmo pacote+rota+dia vire a MESMA linha no banco vindo de
 qualquer cliente (PWA, Android, painel): rebip = upsert, nunca duplicata.
 Não alterar o algoritmo: mudaria todos os IDs gerados pelo app.
 """
+
 from app.timezone import normaliza_data_iso
 
 _M32 = 0xFFFFFFFF
@@ -27,9 +28,9 @@ def cyrb53(s: str, seed: int = 0) -> int:
         if code > 0xFFFF:
             # surrogate pair como o JS veria
             code -= 0x10000
-            for code in (0xD800 + (code >> 10), 0xDC00 + (code & 0x3FF)):
-                h1 = _imul(h1 ^ code, 2654435761)
-                h2 = _imul(h2 ^ code, 1597334677)
+            for unit in (0xD800 + (code >> 10), 0xDC00 + (code & 0x3FF)):
+                h1 = _imul(h1 ^ unit, 2654435761)
+                h2 = _imul(h2 ^ unit, 1597334677)
             continue
         h1 = _imul(h1 ^ code, 2654435761)
         h2 = _imul(h2 ^ code, 1597334677)

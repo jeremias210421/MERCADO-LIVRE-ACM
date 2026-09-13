@@ -3,6 +3,7 @@ Timezone canônico do sistema: America/Sao_Paulo.
 O servidor (Vercel) roda em UTC — usar date.today()/datetime.now() aqui
 desloca o "hoje" e zera dashboard, entregadores e rotas de madrugada.
 """
+
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -24,6 +25,7 @@ def hoje_sp_iso() -> str:
 def sessao_br_para_iso(sessao_id: str) -> str | None:
     """DD-MM-YYYY -> YYYY-MM-DD (sessão do galpão)."""
     import re
+
     m = re.match(r"^(\d{2})-(\d{2})-(\d{4})$", (sessao_id or "").strip())
     if not m:
         return None
@@ -33,6 +35,7 @@ def sessao_br_para_iso(sessao_id: str) -> str | None:
 def normaliza_data_iso(val: object) -> str:
     """Normaliza qualquer formato (ISO, DD/MM/YYYY, DD-MM-YYYY, timestamp) p/ YYYY-MM-DD."""
     import re
+
     s = str(val or "").strip()
     if not s:
         return ""
@@ -43,6 +46,11 @@ def normaliza_data_iso(val: object) -> str:
     if m:
         return f"{m.group(3)}-{m.group(2).zfill(2)}-{m.group(1).zfill(2)}"
     try:
-        return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(SP_TZ).date().isoformat()
+        return (
+            datetime.fromisoformat(s.replace("Z", "+00:00"))
+            .astimezone(SP_TZ)
+            .date()
+            .isoformat()
+        )
     except Exception:
         return ""
