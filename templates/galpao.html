@@ -57,7 +57,7 @@
 <div class="fade-in">
     <!-- Scanner Input -->
     <div class="card-gestor mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <div>
                 <h6 style="font-weight: 700; margin: 0; font-size: 16px;">
                     <i class="bi bi-box-seam me-2" style="color: var(--accent);"></i>
@@ -65,9 +65,26 @@
                 </h6>
                 <span style="font-size: 12px; color: var(--text-muted);">Bipe os pacotes restantes no galpao</span>
             </div>
-            <div class="text-center">
-                <div class="counter-badge" id="counter">0</div>
-                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Bipados</div>
+            <div class="d-flex align-items-center gap-3">
+                <div>
+                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Sessão</div>
+                    <div style="font-weight: 800; font-size: 15px; color: var(--info); font-family: monospace;">{{ sessao_id or '-' }}</div>
+                </div>
+                <button onclick="copiarSessao()" class="btn-outline-gestor" style="padding: 4px 10px; font-size: 11px;" title="Copiar ID da sessão"><i class="bi bi-clipboard"></i></button>
+                <button onclick="copiarIds()" class="btn-outline-gestor" style="padding: 4px 10px; font-size: 11px;" title="Copiar todos os IDs dos pacotes"><i class="bi bi-clipboard-check"></i> IDs</button>
+                {% if sessoes %}
+                <form method="GET" action="{{ url_for('galpao.conferencia_galpao') }}" class="d-flex gap-2 align-items-center">
+                    <select name="sessao" class="form-control-gestor" style="padding: 8px 12px; font-size: 13px;" onchange="this.form.submit()">
+                        {% for s in sessoes %}
+                        <option value="{{ s.sessao_id }}" {{ 'selected' if s.sessao_id == sessao_id else '' }}>{{ s.sessao_id }} ({{ s.total }})</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% endif %}
+                <div class="text-center">
+                    <div class="counter-badge" id="counter">{{ scans_salvos | length }}</div>
+                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Bipados</div>
+                </div>
             </div>
         </div>
 
@@ -78,7 +95,7 @@
         <div id="scanFeedback" class="mb-3" style="min-height: 60px;"></div>
 
         <div class="d-flex gap-2">
-            <button onclick="finalizarConferencia()" class="btn-accent" id="btnFinalizar" disabled>
+            <button onclick="finalizarConferencia()" class="btn-accent" id="btnFinalizar" {{ '' if scans_salvos else 'disabled' }}>
                 <i class="bi bi-check-all me-2"></i>Finalizar Conferencia
             </button>
             <button onclick="limparSessao()" class="btn-outline-gestor">
@@ -87,16 +104,74 @@
         </div>
     </div>
 
+    <!-- QR da sessão + ranking -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card-gestor text-center">
+                <h6 style="font-weight: 700; font-size: 13px;">Bipar junto pelo celular</h6>
+                {% set sessao_url = request.host_url ~ 'galpao?sessao=' ~ sessao_id %}
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data={{ sessao_url | urlencode }}" alt="QR da sessão" style="border-radius: 12px; background: #fff; padding: 6px;" loading="lazy">
+                <p style="font-size: 11px; color: var(--text-muted); margin: 8px 0 0; word-break: break-all;">{{ sessao_url }}</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card-gestor">
+                <h6 style="font-weight: 700; font-size: 13px;">Quem mais retorna (30d)</h6>
+                {% if ranking %}
+                {% set top = ranking[0].total if ranking else 1 %}
+                {% for r in ranking %}
+                <div style="margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                        <span>{{ r.nome }}</span><strong>{{ r.total }}</strong>
+                    </div>
+                    <div class="progress-gestor"><div class="progress-gestor-bar" style="width: {{ (r.total * 100 / top) | round(0) }}%; background: var(--warning);"></div></div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p style="font-size: 12px; color: var(--text-muted);">Sem dados ainda.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
     <!-- Lista de bipados -->
     <div class="card-gestor" style="padding: 0; overflow: hidden;">
         <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color);">
-            <h6 style="font-weight: 700; font-size: 14px; margin: 0;">
-                <i class="bi bi-list-check me-1" style="color: var(--info);"></i>
-                Pacotes Bipados nesta Sessao
-            </h6>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h6 style="font-weight: 700; font-size: 14px; margin: 0;">
+                    <i class="bi bi-list-check me-1" style="color: var(--info);"></i>
+                    Pacotes Bipados nesta Sessao
+                </h6>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button onclick="shareSessao()" class="btn-outline-gestor" style="padding: 6px 12px; font-size: 12px;" title="Compartilhar todos no WhatsApp">
+                        <i class="bi bi-whatsapp me-1"></i>WhatsApp geral
+                    </button>
+                    <button onclick="shareFiltro()" class="btn-outline-gestor" style="padding: 6px 12px; font-size: 12px;" title="Compartilhar o filtro atual no WhatsApp">
+                        <i class="bi bi-funnel me-1"></i>WhatsApp filtro
+                    </button>
+                </div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap align-items-center mt-3">
+                <input id="buscaGalpao" type="text" placeholder="Buscar pacote, endereço, motorista..." class="form-control-gestor" style="padding: 8px 12px; font-size: 13px; min-width: 200px; flex: 1;">
+            </div>
+            <div id="chipsMotorista" class="d-flex gap-2 flex-wrap mt-2"></div>
         </div>
         <div id="scansList" style="max-height: 400px; overflow-y: auto;">
-            <div class="text-center py-4" id="emptyState">
+            {% for s in scans_salvos %}
+            <div class="scan-result" data-galpao-item data-code="{{ s.code }}" data-mot="{{ s.motorista_nome or '' }}" data-rota="{{ s.rota_nome or '' }}" data-rotadata="{{ s.rota_data or '' }}" data-end="{{ s.endereco or '' }}" style="padding: 10px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <a href="{{ url_for('rastreio.ver_pacote', code=s.code) }}" style="font-family: monospace; font-weight: 600; color: var(--text-primary); text-decoration: none;">{{ s.code }}</a>
+                    {% if s.motorista_nome %}<span style="margin-left: 8px; font-size: 12px; color: var(--text-muted);">{{ s.motorista_nome }}</span>{% endif %}
+                    {% if s.rota_nome %}<span style="margin-left: 8px; font-size: 11px; color: var(--info);">{{ s.rota_nome }}{% if s.rota_data %} • {{ s.rota_data }}{% endif %}</span>{% endif %}
+                    {% if s.endereco %}<div style="font-size: 11px; color: var(--text-muted);">{{ s.endereco }}</div>{% endif %}
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span style="font-size: 11px; color: var(--text-muted);">{{ (s.escaneado_em or '')[11:16] }}</span>
+                    <button onclick="shareOne(this)" class="btn-outline-gestor" style="padding: 4px 8px; font-size: 11px;" title="Compartilhar este pacote no WhatsApp"><i class="bi bi-whatsapp"></i></button>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="text-center py-4" id="emptyState" style="{{ 'display: none;' if scans_salvos else '' }}">
                 <i class="bi bi-inbox" style="font-size: 32px; color: var(--text-muted);"></i>
                 <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">
                     Nenhum pacote bipado ainda
@@ -120,7 +195,7 @@
 {% block extra_js %}
 <script>
     const SESSAO_ID = '{{ sessao_id }}';
-    let scans = [];
+    let scans = {{ scans_salvos | tojson }};
     let isProcessing = false;
 
     const scanInput = document.getElementById('scanInput');
@@ -181,7 +256,7 @@
                         </div>
                         ${data.encontrado ? `
                         <div style="margin-top: 6px; font-size: 13px; color: var(--text-secondary);">
-                            <i class="bi bi-signpost-2"></i> Rota: <strong>${data.rota_nome || 'N/A'}</strong>
+                            <i class="bi bi-signpost-2"></i> Rota: <strong>${data.rota_nome || 'N/A'}</strong>${data.rota_data ? ` • ${data.rota_data}` : ''}
                             &nbsp;&nbsp;<i class="bi bi-person"></i> Motorista: <strong>${data.motorista_nome || 'N/A'}</strong>
                             ${data.endereco ? `<br><i class="bi bi-geo-alt"></i> ${data.endereco}` : ''}
                             ${data.comprador_nome ? `<br><i class="bi bi-person"></i> ${data.comprador_nome}` : ''}
@@ -193,14 +268,27 @@
                 if (emptyState) emptyState.style.display = 'none';
                 const item = document.createElement('div');
                 item.className = 'scan-result';
+                item.setAttribute('data-galpao-item', '');
+                item.setAttribute('data-code', data.codigo || '');
+                item.setAttribute('data-mot', data.motorista_nome || '');
+                item.setAttribute('data-rota', data.rota_nome || '');
+                item.setAttribute('data-rotadata', data.rota_data || '');
+                item.setAttribute('data-end', data.endereco || '');
                 item.style.cssText = 'padding: 10px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;';
                 item.innerHTML = `
                     <div>
                         <span style="font-family: monospace; font-weight: 600;">${data.codigo}</span>
                         ${data.motorista_nome ? `<span style="margin-left: 8px; font-size: 12px; color: var(--text-muted);">${data.motorista_nome}</span>` : ''}
+                        ${data.rota_nome ? `<span style="margin-left: 8px; font-size: 11px; color: var(--info);">${data.rota_nome}${data.rota_data ? ` • ${data.rota_data}` : ''}</span>` : ''}
+                        ${data.endereco ? `<div style="font-size: 11px; color: var(--text-muted);">${data.endereco}</div>` : ''}
                     </div>
-                    <span style="font-size: 11px; color: var(--text-muted);">${new Date().toLocaleTimeString('pt-BR')}</span>`;
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="font-size: 11px; color: var(--text-muted);">${new Date().toLocaleTimeString('pt-BR')}</span>
+                        <button onclick="shareOne(this)" class="btn-outline-gestor" style="padding: 4px 8px; font-size: 11px;" title="Compartilhar no WhatsApp"><i class="bi bi-whatsapp"></i></button>
+                    </div>`;
                 scansList.insertBefore(item, scansList.firstChild);
+                construirChips();
+                filtrarGalpao();
 
                 setTimeout(() => scanInput.classList.remove('scanned', 'not-found'), 1000);
             } else {
@@ -285,5 +373,113 @@
         if (scans.length > 0 && !confirm('Limpar todos os scans desta sessao?')) return;
         window.location.reload();
     }
+
+    // ---- Compartilhar via WhatsApp: geral, por entregador e individual ----
+    let filtroMot = '';
+    function itensGalpao() {
+        return Array.from(document.querySelectorAll('[data-galpao-item]')).map(el => ({
+            el,
+            code: el.getAttribute('data-code') || '',
+            mot: el.getAttribute('data-mot') || '',
+            rota: el.getAttribute('data-rota') || '',
+            rotadata: el.getAttribute('data-rotadata') || '',
+            end: el.getAttribute('data-end') || ''
+        }));
+    }
+    function construirChips() {
+        const box = document.getElementById('chipsMotorista');
+        if (!box) return;
+        const mots = {};
+        itensGalpao().forEach(i => { const k = i.mot || 'Sem motorista'; mots[k] = (mots[k] || 0) + 1; });
+        let html = `<button onclick="setFiltroMot('')" class="btn-${!filtroMot ? 'accent' : 'outline-gestor'}" style="padding: 4px 12px; font-size: 11px;">Todos</button>`;
+        Object.keys(mots).sort().forEach(m => {
+            html += `<button onclick="setFiltroMot('${m.replace(/'/g, "\\'")}')" class="btn-${filtroMot === m ? 'accent' : 'outline-gestor'}" style="padding: 4px 12px; font-size: 11px;">${m} (${mots[m]})</button>`;
+        });
+        box.innerHTML = html;
+    }
+    function setFiltroMot(m) { filtroMot = m; construirChips(); filtrarGalpao(); }
+    function filtrarGalpao() {
+        const q = ((document.getElementById('buscaGalpao') || {}).value || '').toLowerCase();
+        itensGalpao().forEach(i => {
+            const hay = (i.code + ' ' + i.mot + ' ' + i.rota + ' ' + i.end).toLowerCase();
+            const ok = (!filtroMot || (i.mot || 'Sem motorista') === filtroMot) && (!q || hay.indexOf(q) !== -1);
+            i.el.style.display = ok ? '' : 'none';
+        });
+    }
+    function linhaPacote(i) {
+        let t = `• ${i.code}`;
+        const det = [(i.rota + (i.rotadata ? ' ' + i.rotadata : '')).trim(), i.end].filter(Boolean).join(' - ');
+        if (det) t += ` (${det})`;
+        return t;
+    }
+    function abrirWhats(text) {
+        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    }
+    function shareSessao() {
+        const itens = itensGalpao();
+        if (!itens.length) return;
+        const porMot = {};
+        itens.forEach(i => { const k = i.mot || 'Sem motorista'; (porMot[k] = porMot[k] || []).push(i); });
+        let t = `🏭 *FECHAMENTO GALPÃO ${SESSAO_ID}* (${itens.length} pacotes)\n`;
+        Object.keys(porMot).sort().forEach(m => {
+            t += `\n👤 *${m}* (${porMot[m].length})\n`;
+            porMot[m].forEach(i => { t += linhaPacote(i) + '\n'; });
+        });
+        abrirWhats(t);
+    }
+    function shareFiltro() {
+        const q = ((document.getElementById('buscaGalpao') || {}).value || '').toLowerCase();
+        const itens = itensGalpao().filter(i => {
+            const hay = (i.code + ' ' + i.mot + ' ' + i.rota + ' ' + i.end).toLowerCase();
+            return (!filtroMot || (i.mot || 'Sem motorista') === filtroMot) && (!q || hay.indexOf(q) !== -1);
+        });
+        if (!itens.length) return;
+        const rotulo = filtroMot || 'filtro atual';
+        let t = `🏭 *GALPÃO ${SESSAO_ID} — ${rotulo}* (${itens.length})\n`;
+        itens.forEach(i => { t += linhaPacote(i) + '\n'; });
+        abrirWhats(t);
+    }
+    function shareOne(btn) {
+        const el = btn.closest('[data-galpao-item]');
+        if (!el) return;
+        const i = {
+            code: el.getAttribute('data-code') || '',
+            mot: el.getAttribute('data-mot') || '',
+            rota: el.getAttribute('data-rota') || '',
+            rotadata: el.getAttribute('data-rotadata') || '',
+            end: el.getAttribute('data-end') || ''
+        };
+        let t = `📦 *${i.code}*\nSessão: ${SESSAO_ID}`;
+        if (i.rota) t += `\nRota: ${i.rota}${i.rotadata ? ` (${i.rotadata})` : ''}`;
+        if (i.mot) t += `\nEntregador: ${i.mot}`;
+        if (i.end) t += `\nEndereço: ${i.end}`;
+        abrirWhats(t);
+    }
+    function copiarTexto(txt, msg) {
+        const done = () => { scanFeedback.innerHTML = `<div class="alert-gestor alert-success">${msg || 'Copiado!'}</div>`; setTimeout(() => { scanFeedback.innerHTML = ''; }, 2000); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(done).catch(() => fallbackCopy(txt, done));
+        } else fallbackCopy(txt, done);
+    }
+    function fallbackCopy(txt, done) {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta); done();
+        } catch (e) {}
+    }
+    function copiarSessao() { if (SESSAO_ID) copiarTexto(SESSAO_ID, 'Sessão ' + SESSAO_ID + ' copiada!'); }
+    function copiarIds() {
+        const ids = itensGalpao().map(i => i.code).filter(Boolean);
+        if (!ids.length) return;
+        copiarTexto(ids.join('\n'), ids.length + ' IDs copiados!');
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        construirChips();
+        const b = document.getElementById('buscaGalpao');
+        if (b) b.addEventListener('input', filtrarGalpao);
+    });
+    construirChips();
 </script>
 {% endblock %}

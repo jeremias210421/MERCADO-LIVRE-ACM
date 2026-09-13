@@ -5,15 +5,29 @@
 
 {% block content %}
 <div class="fade-in">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
             {{ pendentes | length }} pacote{{ 's' if pendentes | length != 1 else '' }} pendente{{ 's' if pendentes | length != 1 else '' }}
         </p>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('pendentes.listar_pendentes') }}" class="btn-{{ 'accent' if not filtro_data and not filtro_status else 'outline-gestor' }}" style="padding: 6px 14px; font-size: 12px; text-decoration: none;">Todas</a>
+                {% for d in datas %}
+                <a href="{{ url_for('pendentes.listar_pendentes', data=d.data) }}" class="btn-{{ 'accent' if filtro_data == d.data and not filtro_status else 'outline-gestor' }}" style="padding: 6px 14px; font-size: 12px; text-decoration: none;">{{ d.data[8:10] }}/{{ d.data[5:7] }}</a>
+                {% endfor %}
+            </div>
+            <div class="d-flex gap-2">
+                {% for st in ['pendente', 'entregue', 'cancelado'] %}
+                <a href="{{ url_for('pendentes.listar_pendentes', data=filtro_data, status=st) }}" class="btn-{{ 'accent' if filtro_status == st else 'outline-gestor' }}" style="padding: 6px 12px; font-size: 11px; text-decoration: none;">{{ st }}</a>
+                {% endfor %}
+                <button onclick="sharePendentesGeral()" class="btn-outline-gestor" style="padding: 6px 12px; font-size: 11px;" title="Compartilhar todos no WhatsApp"><i class="bi bi-whatsapp me-1"></i>WhatsApp</button>
+            </div>
+        </div>
     </div>
 
     {% if agrupado %}
         {% for motorista_nome, pacotes in agrupado.items() %}
-        <div class="card-gestor mb-3">
+        <div class="card-gestor mb-3" data-pend-grupo data-mot="{{ motorista_nome }}">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="d-flex align-items-center gap-3">
                     <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--warning-light); color: var(--warning); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;">
@@ -24,7 +38,10 @@
                         <span style="font-size: 11px; color: var(--text-muted);">{{ pacotes | length }} pacote{{ 's' if pacotes | length != 1 else '' }}</span>
                     </div>
                 </div>
-                <span class="badge-gestor badge-warning">{{ pacotes | length }}</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge-gestor badge-warning">{{ pacotes | length }}</span>
+                    <button onclick="sharePendGrupo(this)" class="btn-outline-gestor" style="padding: 4px 10px; font-size: 11px;" title="Compartilhar pendentes deste entregador"><i class="bi bi-whatsapp"></i></button>
+                </div>
             </div>
 
             <div class="table-responsive">
@@ -34,6 +51,7 @@
                             <th>Codigo</th>
                             <th>Endereco</th>
                             <th>Rota Original</th>
+                            <th>Data Rota</th>
                             <th>Data Pendencia</th>
                             <th>Status</th>
                             <th class="text-end">Acoes</th>
@@ -41,10 +59,11 @@
                     </thead>
                     <tbody>
                         {% for p in pacotes %}
-                        <tr>
-                            <td style="font-weight: 600; font-family: monospace; font-size: 13px;">{{ p.codigo_pacote }}</td>
+                        <tr data-pend-item data-code="{{ p.codigo_pacote }}" data-end="{{ p.endereco or '' }}" data-rota="{{ p.rota_nome or '' }}" data-rotadata="{{ p.rota_data or '' }}" data-datapend="{{ p.data_pendencia or '' }}" data-status="{{ p.status or '' }}">
+                            <td style="font-weight: 600; font-family: monospace; font-size: 13px;"><a href="{{ url_for('rastreio.ver_pacote', code=p.codigo_pacote) }}" style="color: var(--text-primary); text-decoration: none;">{{ p.codigo_pacote }}</a></td>
                             <td style="color: var(--text-secondary); font-size: 13px;">{{ p.endereco or '-' }}</td>
                             <td><span style="color: var(--info); font-size: 13px;">{{ p.rota_nome }}</span></td>
+                            <td style="color: var(--text-muted); font-size: 13px;">{{ p.rota_data or '-' }}</td>
                             <td style="color: var(--text-muted); font-size: 13px;">{{ p.data_pendencia }}</td>
                             <td>
                                 {% if p.status == 'pendente' %}
@@ -56,14 +75,15 @@
                                 {% endif %}
                             </td>
                             <td class="text-end">
+                                <button onclick="sharePendOne(this)" class="btn-outline-gestor" style="padding: 4px 10px; font-size: 11px;" title="Compartilhar no WhatsApp"><i class="bi bi-whatsapp"></i></button>
                                 {% if p.status == 'pendente' %}
-                                <form action="{{ url_for('pendentes.marcar_entregue', pendente_id=p.id) }}" method="POST" class="d-inline">
+                                <form action="{{ url_for('pendentes.marcar_entregue_route', pendente_id=p.id) }}" method="POST" class="d-inline">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-outline-gestor" style="padding: 4px 10px; font-size: 11px; color: var(--accent); border-color: var(--accent-border);">
                                         <i class="bi bi-check-lg"></i>
                                     </button>
                                 </form>
-                                <form action="{{ url_for('pendentes.cancelar_pendente', pendente_id=p.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancelar este pendente?');">
+                                <form action="{{ url_for('pendentes.cancelar_pendente_route', pendente_id=p.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancelar este pendente?');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-outline-gestor" style="padding: 4px 10px; font-size: 11px; color: var(--danger); border-color: rgba(239,68,68,0.2);">
                                         <i class="bi bi-x-lg"></i>
@@ -91,4 +111,63 @@
     </div>
     {% endif %}
 </div>
+<script>
+(function() {
+    function item(tr) {
+        return {
+            code: tr.getAttribute('data-code') || '',
+            end: tr.getAttribute('data-end') || '',
+            rota: tr.getAttribute('data-rota') || '',
+            rotadata: tr.getAttribute('data-rotadata') || '',
+            datapend: tr.getAttribute('data-datapend') || '',
+            status: tr.getAttribute('data-status') || ''
+        };
+    }
+    function linha(i, n) {
+        let t = `${n}. ${i.code}`;
+        if (i.rota) t += ` — ${i.rota}${i.rotadata ? ' ' + i.rotadata : ''}`;
+        if (i.end) t += `\n   📍 ${i.end}`;
+        return t;
+    }
+    function abrir(t) { window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank'); }
+    function mapsUrl(end) { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(end); }
+    window.sharePendentesGeral = function() {
+        const rows = Array.from(document.querySelectorAll('[data-pend-item]'));
+        if (!rows.length) return;
+        const porMot = {};
+        rows.forEach(tr => {
+            const g = tr.closest('[data-pend-grupo]');
+            const m = g ? g.getAttribute('data-mot') : '?';
+            (porMot[m] = porMot[m] || []).push(item(tr));
+        });
+        let t = `⏳ *PENDENTES* (${rows.length} pacotes)\n`;
+        Object.keys(porMot).sort().forEach(m => {
+            t += `\n👤 *${m}* — ${porMot[m].length}\n`;
+            porMot[m].forEach((i, idx) => { t += linha(i, idx + 1) + '\n'; });
+        });
+        abrir(t);
+    };
+    window.sharePendGrupo = function(btn) {
+        const g = btn.closest('[data-pend-grupo]');
+        if (!g) return;
+        const m = g.getAttribute('data-mot');
+        const rows = Array.from(g.querySelectorAll('[data-pend-item]'));
+        if (!rows.length) return;
+        let t = `⏳ *PENDENTES - ${m}* (${rows.length} pacotes)\n`;
+        rows.forEach((tr, idx) => { t += linha(item(tr), idx + 1) + '\n'; });
+        abrir(t);
+    };
+    window.sharePendOne = function(btn) {
+        const tr = btn.closest('[data-pend-item]');
+        if (!tr) return;
+        const i = item(tr);
+        let t = `📦 *${i.code}*`;
+        if (i.status && i.status !== 'pendente') t += ` (${i.status})`;
+        if (i.rota) t += `\n🚛 Rota: ${i.rota}${i.rotadata ? ` (${i.rotadata})` : ''}`;
+        if (i.end) t += `\n📍 ${i.end}\n🗺️ ${mapsUrl(i.end)}`;
+        if (i.datapend) t += `\n🗓️ Desde: ${i.datapend}`;
+        abrir(t);
+    };
+})();
+</script>
 {% endblock %}

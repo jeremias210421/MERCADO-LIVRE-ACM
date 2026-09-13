@@ -123,7 +123,7 @@
                 </thead>
                 <tbody>
                     {% for p in progresso %}
-                    <tr class="driver-row" onclick="window.location.href='{{ url_for('detalhe_entregador', motorista_id=p.motorista_id) }}'">
+                    <tr class="driver-row" onclick="window.location.href='{{ url_for('dashboard.detalhe_entregador', motorista_id=p.motorista_id) }}'">
                         <td>
                             <div class="d-flex align-items-center gap-3">
                                 <div class="driver-avatar" style="background: {{ 'var(--accent-light); color: var(--accent)' if p.percentual >= 80 else 'var(--warning-light); color: var(--warning)' if p.percentual >= 50 else 'var(--danger-light); color: var(--danger)' }};">

@@ -111,7 +111,7 @@
                 <tbody>
                     {% for s in scans_hoje %}
                     <tr>
-                        <td style="font-weight: 600; font-family: monospace;">{{ s.codigo_pacote }}</td>
+                        <td style="font-weight: 600; font-family: monospace;"><a href="{{ url_for('rastreio.ver_pacote', code=s.codigo_pacote or s.code) }}" style="color: var(--text-primary); text-decoration: none;">{{ s.codigo_pacote or s.code }}</a></td>
                         <td style="color: var(--text-secondary); font-size: 13px;">{{ s.endereco or '-' }}</td>
                         <td style="color: var(--text-muted); font-size: 13px;">
                             {{ s.escaneado_em[11:16] if s.escaneado_em | length > 16 else '-' }}

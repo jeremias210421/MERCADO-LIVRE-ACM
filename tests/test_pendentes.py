@@ -92,12 +92,41 @@ class TestPendentesAgrupamento:
         ]
         rotas = [{"id": "r1", "rota": "ROTA-1"}, {"id": "r2", "rota": "ROTA-2"}]
 
-        # Set up side effects for the three execute calls
-        mock_supabase.table.return_value.select.return_value.execute.side_effect = [
-            MagicMock(data=pendentes),  # 1st call: pendentes
-            MagicMock(data=motoristas),  # 2nd call: motoristas
-            MagicMock(data=rotas),  # 3rd call: rotas
-        ]
+        # Dispatch por tabela (deterministico, independe da ordem das queries)
+        def _chain(data):
+            m = MagicMock()
+            m.execute.return_value = MagicMock(data=data)
+            for meth in (
+                "select",
+                "order",
+                "eq",
+                "in_",
+                "gte",
+                "lte",
+                "limit",
+                "range",
+                "single",
+                "or_",
+            ):
+                getattr(m, meth).return_value = m
+            return m
+
+        calls = {"n": 0}
+
+        def table_dispatch(name):
+            if name == "pacotes_pendentes":
+                # 1a chamada: linhas; demais: amostra p/ datas do filtro
+                if calls["n"] == 0:
+                    calls["n"] += 1
+                    return _chain(pendentes)
+                return _chain([{"data_pendencia": "2026-01-01", "status": "pendente"}])
+            if name == "motoristas":
+                return _chain(motoristas)
+            if name == "rotas":
+                return _chain(rotas)
+            return _chain([])
+
+        mock_supabase.table.side_effect = table_dispatch
 
         response = client.get("/pendentes")
         assert response.status_code == 200

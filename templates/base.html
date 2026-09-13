@@ -498,6 +498,12 @@
             <a href="{{ url_for('upload.upload_file') }}" class="sidebar-link {% if request.endpoint == 'upload.upload_file' %}active{% endif %}">
                 <i class="bi bi-cloud-upload"></i> Upload Rotas
             </a>
+            <a href="{{ url_for('geracao.pagina_geracao') }}" class="sidebar-link {% if 'geracao' in request.endpoint|default('') %}active{% endif %}">
+                <i class="bi bi-robot"></i> Geração
+            </a>
+            <a href="{{ url_for('rastreio.buscar_pacote') }}" class="sidebar-link {% if 'rastreio' in request.endpoint|default('') or 'pacote' in request.endpoint|default('') %}active{% endif %}">
+                <i class="bi bi-search"></i> Rastrear
+            </a>
         </nav>
 
         <div class="sidebar-footer">

@@ -5,111 +5,166 @@
 
 {% block content %}
 <div class="fade-in">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
             {{ rotas | length }} rota{{ 's' if rotas | length != 1 else '' }} cadastrada{{ 's' if rotas | length != 1 else '' }}
         </p>
-        <a href="{{ url_for('upload.upload_file') }}" class="btn-accent">
-            <i class="bi bi-cloud-upload me-2"></i>Upload Rota
-        </a>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <input id="buscaRota" type="text" placeholder="Buscar rota..." class="form-control-gestor" style="padding: 8px 12px; font-size: 13px; min-width: 160px;">
+            <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="soHoje" checked> Só hoje ({{ hoje.isoformat() }})
+            </label>
+            <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="soSemMot"> Sem motorista
+            </label>
+            <a href="{{ url_for('upload.upload_file') }}" class="btn-accent">
+                <i class="bi bi-cloud-upload me-2"></i>Upload Rota
+            </a>
+        </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap mb-3" id="filtrosStatus">
+        <button data-filtro="todas" class="btn-accent" style="padding: 6px 14px; font-size: 12px;">Todas</button>
+        <button data-filtro="aguardando" class="btn-outline-gestor" style="padding: 6px 14px; font-size: 12px;">Aguardando</button>
+        <button data-filtro="iniciando" class="btn-outline-gestor" style="padding: 6px 14px; font-size: 12px;">Iniciando</button>
+        <button data-filtro="andamento" class="btn-outline-gestor" style="padding: 6px 14px; font-size: 12px;">Em andamento</button>
+        <button data-filtro="finalizada" class="btn-outline-gestor" style="padding: 6px 14px; font-size: 12px;">Finalizadas</button>
     </div>
 
     {% if rotas %}
-    <div class="row g-3">
-        {% for rota in rotas %}
-        {% set m_id = rota_motoristas.get(rota.id) %}
-        <div class="col-md-6 col-xl-4">
-            <div class="card-gestor h-100">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <h6 style="font-weight: 800; margin: 0; font-size: 16px; color: var(--info);">
-                            {{ rota.rota }}
-                        </h6>
-                        {% if rota.cidade %}
-                        <span style="font-size: 11px; color: var(--text-muted);">
-                            <i class="bi bi-geo-alt"></i> {{ rota.cidade }}
-                        </span>
-                        {% endif %}
-                    </div>
-                    {% if rota.entregues_hoje > 0 %}
-                        {% if rota.percentual_hoje >= 100 %}
-                        <span class="badge-gestor badge-success">Finalizada</span>
-                        {% elif rota.percentual_hoje >= 50 %}
-                        <span class="badge-gestor badge-info">Em andamento</span>
-                        {% else %}
-                        <span class="badge-gestor badge-warning">Iniciando</span>
-                        {% endif %}
-                    {% else %}
-                        <span class="badge-gestor" style="background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border-color);">Aguardando</span>
-                    {% endif %}
-                </div>
+    {% set hoje_iso = hoje.isoformat() %}
+    {% set de_hoje = rotas | selectattr('session_date', 'equalto', hoje_iso) | sort(attribute='rota') | list %}
+    {% set com_data = rotas | rejectattr('session_date', 'none') | rejectattr('session_date', 'equalto', '') | rejectattr('session_date', 'equalto', hoje_iso) | sort(attribute='session_date', reverse=true) | list %}
+    {% set sem_data = rotas | selectattr('session_date', 'none') | list + rotas | selectattr('session_date', 'equalto', '') | list | sort(attribute='rota') %}
 
-                <!-- Stats -->
-                <div class="row g-2 mb-3">
-                    <div class="col-4">
-                        <div style="text-align: center; background: var(--bg-tertiary); border-radius: 10px; padding: 8px;">
-                            <div style="font-weight: 800; font-size: 18px; color: var(--info);">{{ rota.total_pacotes or 0 }}</div>
-                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Pacotes</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div style="text-align: center; background: var(--bg-tertiary); border-radius: 10px; padding: 8px;">
-                            <div style="font-weight: 800; font-size: 18px; color: var(--accent);">{{ rota.entregues_hoje }}</div>
-                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Entregues</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div style="text-align: center; background: var(--bg-tertiary); border-radius: 10px; padding: 8px;">
-                            <div style="font-weight: 800; font-size: 18px; color: var(--text-primary);">{{ rota.total_paradas or 0 }}</div>
-                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Paradas</div>
-                        </div>
-                    </div>
-                </div>
+    <details open data-secao data-secao-nome="hoje">
+        <summary style="cursor: pointer; font-weight: 800; font-size: 14px; color: var(--accent); margin-bottom: 12px;">
+            Hoje ({{ hoje_iso }}) — <span data-contador>{{ de_hoje | length }}</span>
+        </summary>
+        <div class="row g-3 mb-2" data-lista>
+            {% for rota in de_hoje %}
+            {% set m_id = rota_motoristas.get(rota.id) %}
+            {% include '_rota_card.html' %}
+            {% else %}
+            <p style="color: var(--text-muted); font-size: 13px;">Nenhuma rota hoje ainda. Importe no Upload.</p>
+            {% endfor %}
+        </div>
+        {% if de_hoje | length > 12 %}
+        <button data-mais class="btn-outline-gestor mb-4" style="font-size: 12px; padding: 6px 14px;">Ver mais {{ de_hoje | length - 12 }}</button>
+        {% endif %}
+    </details>
 
-                <!-- Progress bar -->
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span style="font-size: 11px; color: var(--text-muted);">Progresso hoje</span>
-                        <span style="font-size: 11px; font-weight: 700; color: {{ 'var(--accent)' if rota.percentual_hoje >= 80 else 'var(--warning)' if rota.percentual_hoje >= 50 else 'var(--text-muted)' }};">
-                            {{ rota.percentual_hoje }}%
-                        </span>
-                    </div>
-                    <div class="progress-gestor">
-                        <div class="progress-gestor-bar" style="width: {{ rota.percentual_hoje }}%; background: {{ 'var(--accent)' if rota.percentual_hoje >= 80 else 'var(--warning)' if rota.percentual_hoje >= 50 else 'var(--text-muted)' }};"></div>
-                    </div>
-                </div>
-
-                <!-- Motorista designado -->
-                <div style="border-top: 1px solid var(--border-color); padding-top: 12px;">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Motorista</span>
-                            {% if m_id %}
-                                {% for m in motoristas if m.id == m_id %}
-                                <div style="font-weight: 600; font-size: 14px; color: var(--text-primary);">{{ m.nome }}</div>
-                                {% endfor %}
-                            {% else %}
-                            <div style="font-size: 13px; color: var(--text-muted); font-style: italic;">Não designado</div>
-                            {% endif %}
-                        </div>
-                        <form action="{{ url_for('rotas.designar_motorista', rota_id=rota.id) }}" method="POST" class="d-flex gap-2 align-items-center">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <select name="motorista_id" class="form-control-gestor" style="padding: 6px 10px; font-size: 12px; min-width: 120px;">
-                                <option value="">Selecionar...</option>
-                                {% for m in motoristas %}
-                                <option value="{{ m.id }}" {{ 'selected' if m.id == m_id else '' }}>{{ m.nome }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="btn-outline-gestor" style="padding: 6px 10px; font-size: 12px;">
-                                <i class="bi bi-link-45deg"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
+    <details data-secao data-secao-nome="anteriores">
+        <summary style="cursor: pointer; font-weight: 800; font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;">
+            Dias anteriores — <span data-contador>{{ com_data | length }}</span>
+        </summary>
+        {% for data, itens in com_data | groupby('session_date') | sort(attribute='grouper', reverse=true) %}
+        <div data-subsecao style="margin-bottom: 16px;">
+            <p style="font-size: 12px; font-weight: 800; color: var(--info); margin: 12px 0 8px;">{{ data }} — <span data-contador>{{ itens | length }}</span></p>
+            <div class="row g-3 mb-2" data-lista>
+                {% for rota in itens | sort(attribute='rota') %}
+                {% set m_id = rota_motoristas.get(rota.id) %}
+                {% include '_rota_card.html' %}
+                {% endfor %}
             </div>
+            {% if itens | length > 12 %}
+            <button data-mais class="btn-outline-gestor" style="font-size: 12px; padding: 6px 14px;">Ver mais {{ itens | length - 12 }}</button>
+            {% endif %}
         </div>
         {% endfor %}
-    </div>
+    </details>
+
+    <details data-secao data-secao-nome="sem-data">
+        <summary style="cursor: pointer; font-weight: 800; font-size: 14px; color: var(--text-muted); margin-bottom: 12px;">
+            Sem data — <span data-contador>{{ sem_data | length }}</span>
+        </summary>
+        <div class="row g-3 mb-2" data-lista>
+            {% for rota in sem_data %}
+            {% set m_id = rota_motoristas.get(rota.id) %}
+            {% include '_rota_card.html' %}
+            {% endfor %}
+        </div>
+        {% if sem_data | length > 12 %}
+        <button data-mais class="btn-outline-gestor mb-4" style="font-size: 12px; padding: 6px 14px;">Ver mais {{ sem_data | length - 12 }}</button>
+        {% endif %}
+    </details>
+    <script>
+    (function() {
+        function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+        function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+        var busca = document.getElementById('buscaRota');
+        var soHoje = document.getElementById('soHoje');
+        var soSemMot = document.getElementById('soSemMot');
+        var filtroStatus = 'todas';
+        // Padrão: só hoje MARCADO (ignora restauração do navegador; vale o salvo ou o padrão)
+        var sh = load('rotas_soHoje');
+        if (soHoje) soHoje.checked = (sh === null) ? true : (sh === '1');
+        var fs = load('rotas_filtro');
+        if (fs) filtroStatus = fs;
+        var POR_PAGINA = 12;
+        document.querySelectorAll('#filtrosStatus button').forEach(function(b) {
+            b.addEventListener('click', function() {
+                filtroStatus = b.getAttribute('data-filtro');
+                store('rotas_filtro', filtroStatus);
+                document.querySelectorAll('#filtrosStatus button').forEach(function(x) {
+                    var on = x === b;
+                    x.className = on ? 'btn-accent' : 'btn-outline-gestor';
+                    x.style.cssText = 'padding: 6px 14px; font-size: 12px;';
+                });
+                filtrar();
+            });
+            if (b.getAttribute('data-filtro') === filtroStatus) b.click();
+        });
+        // paginação por lista: mostra 12, "ver mais" revela +12
+        document.querySelectorAll('[data-lista]').forEach(function(lista) {
+            var btn = lista.parentElement.querySelector('[data-mais]');
+            var cards = lista.querySelectorAll('[data-rota-card]');
+            var visiveis = POR_PAGINA;
+            function aplicar() {
+                var mostrados = 0;
+                cards.forEach(function(c) {
+                    if (c.style.display === 'none') return;
+                    mostrados++;
+                    c.style.visibility = mostrados <= visiveis ? '' : 'hidden';
+                    c.style.position = mostrados <= visiveis ? '' : 'absolute';
+                });
+                if (btn) {
+                    var restantes = 0;
+                    cards.forEach(function(c) { if (c.style.display !== 'none' && c.style.visibility === 'hidden') restantes++; });
+                    btn.style.display = restantes ? '' : 'none';
+                    btn.textContent = 'Ver mais ' + restantes;
+                }
+            }
+            if (btn) btn.addEventListener('click', function() { visiveis += POR_PAGINA; aplicar(); });
+            lista._aplicarPag = aplicar;
+        });
+        function filtrar() {
+            var q = ((busca && busca.value) || '').toUpperCase().trim();
+            document.querySelectorAll('[data-secao]').forEach(function(sec) {
+                var vis = 0;
+                sec.querySelectorAll('[data-rota-card]').forEach(function(c) {
+                    var okQ = !q || (c.getAttribute('data-rota') || '').indexOf(q) !== -1;
+                    var okD = true;
+                    if (soHoje && soHoje.checked) okD = sec.getAttribute('data-secao-nome') === 'hoje';
+                    var okS = filtroStatus === 'todas' || (c.getAttribute('data-status') || '') === filtroStatus;
+                    var okM = !(soSemMot && soSemMot.checked) || (c.getAttribute('data-mot') || '') === 'sem';
+                    var show = okQ && okD && okS && okM;
+                    c.style.display = show ? '' : 'none';
+                    if (show) vis++;
+                });
+                sec.style.display = vis ? '' : 'none';
+                var cont = sec.querySelector('[data-contador]');
+                if (cont) cont.textContent = vis;
+                if (vis > 0 && (q || (soHoje && !soHoje.checked))) sec.setAttribute('open', '');
+                sec.querySelectorAll('[data-lista]').forEach(function(l) { if (l._aplicarPag) l._aplicarPag(); });
+            });
+        }
+        if (busca) busca.addEventListener('input', filtrar);
+        if (soHoje) soHoje.addEventListener('change', function() { store('rotas_soHoje', soHoje.checked ? '1' : '0'); filtrar(); });
+        if (soSemMot) soSemMot.addEventListener('change', filtrar);
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', filtrar);
+        filtrar();
+    })();
+    </script>
     {% else %}
     <div class="card-gestor text-center py-5">
         <i class="bi bi-signpost-2" style="font-size: 48px; color: var(--text-muted);"></i>
