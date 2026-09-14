@@ -30,6 +30,10 @@ export const useScanner = (
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const settingsRef = useRef(settings);
   const loadedRouteRef = useRef(loadedRoute);
+  // Callbacks vivos: a câmera registra o onScanSuccess uma vez — sem refs,
+  // modo galpão / rota / operador ficariam congelados na 1ª renderização.
+  const onScanProcessedRef = useRef(onScanProcessed);
+  const setScannedCodesRef = useRef(setScannedCodes);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -38,6 +42,11 @@ export const useScanner = (
   useEffect(() => {
     loadedRouteRef.current = loadedRoute;
   }, [loadedRoute]);
+
+  useEffect(() => {
+    onScanProcessedRef.current = onScanProcessed;
+    setScannedCodesRef.current = setScannedCodes;
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -217,7 +226,7 @@ export const useScanner = (
     };
 
     if (settingsRef.current.avoidDuplicates) {
-      setScannedCodes(prev => {
+      setScannedCodesRef.current(prev => {
         const existingIndex = prev.findIndex(item => item.code === processedText);
         if (existingIndex !== -1) {
           const updated = [...prev];
@@ -227,7 +236,7 @@ export const useScanner = (
         return [newCode, ...prev].slice(0, 500);
       });
     } else {
-      setScannedCodes(prev => [newCode, ...prev].slice(0, 500));
+      setScannedCodesRef.current(prev => [newCode, ...prev].slice(0, 500));
     }
 
     // Atualizar ref e display
@@ -235,8 +244,8 @@ export const useScanner = (
     setLastScannedDisplay(decodedText);
 
     // Notificar componente pai sobre o scan processado
-    if (onScanProcessed) {
-      onScanProcessed(newCode);
+    if (onScanProcessedRef.current) {
+      onScanProcessedRef.current(newCode);
     }
 
     if (settingsRef.current.autoOpenLinks && isUrl(processedText)) {

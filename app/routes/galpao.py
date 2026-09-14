@@ -76,3 +76,22 @@ def galpao_finalizar():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/galpao/faltantes")
+@require_supabase()
+def galpao_faltantes():
+    """Fechamento: pacotes do manifesto que nao voltaram ao galpao nem foram
+    bipados na rua — provavelmente ainda estao com o entregador.
+
+    Uso: GET /galpao/faltantes?sessao=DD-MM-YYYY
+    Nao precisa de rota 'Fechamento de Galpao': a sessao e' a data (SP).
+    """
+    from app.services import fora_na_rua, resolver_sessao
+
+    sessao_pedida = (request.args.get("sessao") or "").strip()
+    try:
+        sessao_id, _ = resolver_sessao(sessao_pedida or None)
+        return jsonify({"sessao_id": sessao_id, **fora_na_rua(sessao_id)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

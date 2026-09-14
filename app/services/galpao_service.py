@@ -8,27 +8,59 @@ from app.supabase_client import get_supabase
 
 
 def scan_pacote(codigo: str, sessao_id: str) -> dict[str, Any]:
-    """Scan a package in the warehouse."""
+    """Scan a package in the warehouse.
+
+    Nunca exige rota 'Fechamento de Galpao': registra o bipe mesmo se o
+    pacote nao estiver na base (encontrado=False) ou se a RPC nao existir.
+    """
+    from app.timezone import agora_sp
+
     supabase = get_supabase()
 
-    # Identify package automatically
-    result = supabase.rpc("identificar_pacote", {"p_codigo": codigo}).execute()
-
+    # Identify package automatically (best-effort: sem RPC = nao encontrado, mas grava)
     rota_id = None
     motorista_id = None
     endereco = None
     encontrado = False
+    try:
+        result = supabase.rpc("identificar_pacote", {"p_codigo": codigo}).execute()
+        if result.data and len(result.data) > 0:
+            info = result.data[0]
+            encontrado = info.get("encontrado", False)
+            rota_id = info.get("rota_id")
+            motorista_id = info.get("motorista_id")
+            endereco = info.get("endereco")
+    except Exception as e:
+        print(f"[galpao] identificar_pacote falhou ({e}), seguindo como nao encontrado")
 
-    if result.data and len(result.data) > 0:
-        info = result.data[0]
-        encontrado = info.get("encontrado", False)
-        rota_id = info.get("rota_id")
-        motorista_id = info.get("motorista_id")
-        endereco = info.get("endereco")
+    # Fallback sem RPC: tenta achar direto em pacotes->paradas (cobre banco sem funcao)
+    if not encontrado:
+        try:
+            pc = (
+                supabase.table("pacotes")
+                .select("parada_id")
+                .eq("codigo_pacote", codigo)
+                .limit(1)
+                .execute()
+            )
+            if pc.data:
+                pid = pc.data[0].get("parada_id")
+                if pid:
+                    par = (
+                        supabase.table("paradas")
+                        .select("rota_id,endereco")
+                        .eq("id", pid)
+                        .limit(1)
+                        .execute()
+                    )
+                    if par.data:
+                        rota_id = rota_id or par.data[0].get("rota_id")
+                        endereco = endereco or par.data[0].get("endereco")
+                        encontrado = True
+        except Exception:
+            pass
 
-    # Register scan
-    from app.timezone import agora_sp
-
+    # Register scan (sempre grava — e' isso que dispensa criar rota manual)
     supabase.table("galpao_scans").insert(
         {
             "codigo_pacote": codigo,
@@ -40,31 +72,49 @@ def scan_pacote(codigo: str, sessao_id: str) -> dict[str, Any]:
         }
     ).execute()
 
-    # Get motorista and rota names + data da rota
+    # Get motorista and rota names + data da rota.
+    # session_date pode nao existir no banco (schema antigo) -> fallback p/ so' rota.
     motorista_nome = None
     rota_nome = None
     rota_data = None
     if motorista_id:
-        m = (
-            supabase.table("motoristas")
-            .select("nome")
-            .eq("id", motorista_id)
-            .single()
-            .execute()
-        )
-        if m.data:
-            motorista_nome = m.data.get("nome")
+        try:
+            m = (
+                supabase.table("motoristas")
+                .select("nome")
+                .eq("id", motorista_id)
+                .single()
+                .execute()
+            )
+            if m.data:
+                motorista_nome = m.data.get("nome")
+        except Exception:
+            pass
     if rota_id:
-        r = (
-            supabase.table("rotas")
-            .select("rota,session_date")
-            .eq("id", rota_id)
-            .single()
-            .execute()
-        )
-        if r.data:
-            rota_nome = r.data.get("rota")
-            rota_data = r.data.get("session_date")
+        try:
+            r = (
+                supabase.table("rotas")
+                .select("rota,session_date")
+                .eq("id", rota_id)
+                .single()
+                .execute()
+            )
+            if r.data:
+                rota_nome = r.data.get("rota")
+                rota_data = r.data.get("session_date")
+        except Exception:
+            try:
+                r = (
+                    supabase.table("rotas")
+                    .select("rota")
+                    .eq("id", rota_id)
+                    .single()
+                    .execute()
+                )
+                if r.data:
+                    rota_nome = r.data.get("rota")
+            except Exception:
+                pass
 
     # Buyer contact (alocado pelo ETL)
     comprador_nome = None
@@ -109,7 +159,7 @@ def gerar_pendentes_sessao(supabase, sessao_id: str) -> int:
 
     sess = (
         supabase.table("galpao_scans")
-        .select("codigo_pacote,rota_id,motorista_id")
+        .select("codigo_pacote,rota_id,motorista_id,endereco")
         .eq("sessao_id", sessao_id)
         .limit(5000)
         .execute()
@@ -118,24 +168,29 @@ def gerar_pendentes_sessao(supabase, sessao_id: str) -> int:
     if not rows:
         return 0
 
-    # Só retornados com entregador E rota identificados viram pendente
-    cands = {}
+    # Todo retorno ao galpao vira pendente, COM ou SEM motorista/rota
+    # identificados. Chave inclui motorista (pode ser None).
+    cands: dict = {}
+    end_scan: dict = {}
     for r in rows:
         code = str(r.get("codigo_pacote") or "").strip().upper()
+        if not code:
+            continue
         mid = r.get("motorista_id")
         rid = r.get("rota_id")
-        if not code or not mid or not rid:
-            continue
-        cands[(code, mid)] = rid
+        cands.setdefault((code, mid), rid)
+        if r.get("endereco") and code not in end_scan:
+            end_scan[code] = r.get("endereco")
     if not cands:
         return 0
 
     # Endereço de cada código (pacotes→paradas, batch) — sem ele a lista mostra '-'
-    end_por_code: dict = {}
+    end_por_code: dict = dict(end_scan)
     try:
+        rids = [rid for (_, _), rid in cands.items() if rid]
         todas_paradas: dict = {}
-        for i in range(0, len({rid for (_, _), rid in cands.items()}), 100):
-            ch = list({rid for (_, _), rid in cands.items()})[i : i + 100]
+        for i in range(0, len(set(rids)), 100):
+            ch = list(set(rids))[i : i + 100]
             pars = (
                 supabase.table("paradas")
                 .select("id,rota_id,endereco")
@@ -245,20 +300,44 @@ def finalizar_conferencia(sessao_id: str) -> dict[str, Any]:
         .execute()
     )
 
-    # Group by motorista
+    # Group by motorista (SEM motorista entra como bucket proprio p/ funcionar sem designar)
     por_motorista: dict[str, dict[str, Any]] = {}
     for scan in scans_sessao.data or []:
-        mid = scan.get("motorista_id")
-        if mid:
-            if mid not in por_motorista:
-                por_motorista[mid] = {"nome": None, "count": 0}
-            por_motorista[mid]["count"] += 1
+        mid = scan.get("motorista_id") or "SEM_MOTORISTA"
+        if mid not in por_motorista:
+            por_motorista[mid] = {
+                "nome": None if mid != "SEM_MOTORISTA" else "Sem motorista",
+                "count": 0,
+            }
+        por_motorista[mid]["count"] += 1
 
-    # Get motorista names
+    # Get motorista names (best-effort: .single() falha se nao achar)
     for mid, entry in por_motorista.items():
-        m = supabase.table("motoristas").select("nome").eq("id", mid).single().execute()
-        if m.data:
-            entry["nome"] = m.data["nome"]
+        if mid == "SEM_MOTORISTA":
+            continue
+        try:
+            m = (
+                supabase.table("motoristas")
+                .select("nome")
+                .eq("id", mid)
+                .single()
+                .execute()
+            )
+            if m.data:
+                entry["nome"] = m.data["nome"]
+        except Exception:
+            try:
+                m = (
+                    supabase.table("motoristas")
+                    .select("nome")
+                    .eq("id", mid)
+                    .limit(1)
+                    .execute()
+                )
+                if m.data:
+                    entry["nome"] = m.data[0].get("nome")
+            except Exception:
+                pass
 
     return {
         "success": True,
@@ -640,7 +719,18 @@ def get_session_scans_enriquecidos(sessao_id: str) -> list[dict[str, Any]]:
             for x in q.data or []:
                 rotas[x["id"]] = (x.get("rota"), x.get("session_date"))
         except Exception:
-            pass
+            try:
+                q = (
+                    supabase.table("rotas")
+                    .select("id,rota")
+                    .in_("id", rids[i : i + 100])
+                    .limit(500)
+                    .execute()
+                )
+                for x in q.data or []:
+                    rotas[x["id"]] = (x.get("rota"), None)
+            except Exception:
+                pass
     out = []
     for item in items:
         rn, rd = (

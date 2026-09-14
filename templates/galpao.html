@@ -104,6 +104,23 @@
         </div>
     </div>
 
+    <!-- Ainda na rua (faltantes da sessão) -->
+    <div class="card-gestor mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h6 style="font-weight: 700; margin: 0; font-size: 14px;">
+                    <i class="bi bi-truck me-2" style="color: var(--warning);"></i>
+                    Ainda na rua
+                </h6>
+                <span style="font-size: 12px; color: var(--text-muted);">Do manifesto, sem bipe na rua nem no galpão</span>
+            </div>
+            <button onclick="carregarFaltantes()" class="btn-outline-gestor" id="btnFaltantes" style="padding: 6px 12px; font-size: 12px;">
+                <i class="bi bi-arrow-clockwise me-1"></i>Ver quem ficou na rua
+            </button>
+        </div>
+        <div id="faltantesBox" class="mt-3" style="display: none;"></div>
+    </div>
+
     <!-- QR da sessão + ranking -->
     <div class="row g-3 mb-4">
         <div class="col-md-6">
@@ -367,6 +384,44 @@
     function fecharResumo() {
         document.getElementById('resumoModal').style.display = 'none';
         window.location.reload();
+    }
+
+    // ---- Ainda na rua: manifesto sem bipe (GET /galpao/faltantes) ----
+    async function carregarFaltantes() {
+        const box = document.getElementById('faltantesBox');
+        const btn = document.getElementById('btnFaltantes');
+        box.style.display = 'block';
+        box.innerHTML = '<p style="font-size: 12px; color: var(--text-muted);">Carregando...</p>';
+        if (btn) btn.disabled = true;
+        try {
+            const res = await fetch('/galpao/faltantes?sessao=' + encodeURIComponent(SESSAO_ID));
+            const data = await res.json();
+            if (data.error) {
+                box.innerHTML = `<div class="alert-gestor alert-danger">Erro: ${data.error}</div>`;
+                return;
+            }
+            if (!data.total) {
+                box.innerHTML = '<p style="font-size: 13px; color: var(--accent); font-weight: 600;">Tudo certo — nada ficou na rua.</p>';
+                return;
+            }
+            let html = `<p style="font-size: 13px; font-weight: 700;">${data.total} pacote(s) ainda na rua</p>`;
+            (data.por_motorista || []).forEach(m => {
+                html += `<div style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <strong>${m.nome || 'Sem motorista'}</strong>
+                        <span class="badge-gestor badge-warning">${m.count}</span>
+                    </div>`;
+                (m.exemplos || []).forEach(e => {
+                    html += `<div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">• ${e.code}${e.address ? ` — ${e.address}` : ''}</div>`;
+                });
+                html += '</div>';
+            });
+            box.innerHTML = html;
+        } catch (err) {
+            box.innerHTML = `<div class="alert-gestor alert-danger">Erro de conexao: ${err.message}</div>`;
+        } finally {
+            if (btn) btn.disabled = false;
+        }
     }
 
     function limparSessao() {

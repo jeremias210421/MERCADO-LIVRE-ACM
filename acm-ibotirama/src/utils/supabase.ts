@@ -140,7 +140,15 @@ export async function fetchRotaDetalhes(rotaId: string): Promise<RotaDetalhes | 
 }
 
 /**
- * Envia scans para o Supabase (upload em lote)
+ * Envia scans para o Supabase (upload em lote).
+ *
+ * Envia as colunas legadas (codigo_pacote/rota_id/...) + as colunas de texto
+ * (code/route/operator_name/session_date/scanned_at) que o painel Flask usa
+ * para contar entregas do dia. Sem elas o bipe cai no banco mas fica
+ * invisivel no dashboard.
+ *
+ * Duplicadas (409/23505 — retry apos queda de rede) sao tratadas como
+ * sucesso para a fila nunca travar: o pacote ja esta no banco.
  */
 export async function uploadScans(scans: Array<{
   rota_id?: string;
@@ -150,6 +158,11 @@ export async function uploadScans(scans: Array<{
   endereco?: string;
   is_valid?: boolean;
   escaneado_em?: string;
+  code?: string;
+  route?: string;
+  operator_name?: string;
+  session_date?: string;
+  scanned_at?: string;
 }>): Promise<boolean> {
   if (!supabase || scans.length === 0) return false;
 
@@ -159,12 +172,57 @@ export async function uploadScans(scans: Array<{
       .insert(scans);
 
     if (error) {
+      if (isDuplicateError(error)) {
+        return true;
+      }
       console.error('Erro ao enviar scans:', error);
       return false;
     }
     return true;
   } catch (e) {
     console.error('Erro ao enviar scans:', e);
+    return false;
+  }
+}
+
+function isDuplicateError(error: { code?: string; status?: number; message?: string }): boolean {
+  const code = String(error?.code || '');
+  const status = Number(error?.status || 0);
+  const msg = String(error?.message || '').toLowerCase();
+  return code === '23505' || status === 409 || msg.includes('duplicate') || msg.includes('already exists');
+}
+
+/**
+ * Envia bipes do MODO GALPÃO para `galpao_scans` (conferência do Flask).
+ * NÃO cria rota/pasta no servidor: a sessão (DD-MM-YYYY) é a chave e o
+ * /galpao/finalizar do painel gera as pendências. É isso que dispensa a
+ * pasta "fechamento de galpão" todo dia.
+ */
+export async function uploadGalpaoScans(scans: Array<{
+  codigo_pacote: string;
+  sessao_id: string;
+  escaneado_em?: string;
+  endereco?: string;
+  rota_id?: string | null;
+  motorista_id?: string | null;
+}>): Promise<boolean> {
+  if (!supabase || scans.length === 0) return false;
+
+  try {
+    const { error } = await supabase
+      .from('galpao_scans')
+      .insert(scans);
+
+    if (error) {
+      if (isDuplicateError(error)) {
+        return true;
+      }
+      console.error('Erro ao enviar scans do galpão:', error);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('Erro ao enviar scans do galpão:', e);
     return false;
   }
 }

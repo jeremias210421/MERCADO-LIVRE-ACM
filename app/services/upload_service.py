@@ -148,23 +148,23 @@ def importar_json_para_supabase(dados_json: dict) -> dict[str, Any]:
             import uuid
 
             rota_id = str(uuid.uuid4())
-            ins = (
-                supabase.table("rotas")
-                .insert(
-                    {
-                        "id": rota_id,
-                        "rota": rota_nome,
-                        "id_original": id_original,
-                        "total_paradas": total_paradas,
-                        "total_pacotes": total_pacotes,
-                        "observacao": dados_json.get("observacao", ""),
-                        "cidade": dados_json.get("cidade", ""),
-                        # SEMPRE datada (SP): sem isso nasce NULL e some dos filtros do dia
-                        "session_date": hoje,
-                    }
-                )
-                .execute()
-            )
+            base_row = {
+                "id": rota_id,
+                "rota": rota_nome,
+                "id_original": id_original,
+                "total_paradas": total_paradas,
+                "total_pacotes": total_pacotes,
+                "observacao": dados_json.get("observacao", ""),
+                "cidade": dados_json.get("cidade", ""),
+                # SEMPRE datada (SP): sem isso nasce NULL e some dos filtros do dia
+                "session_date": hoje,
+            }
+            try:
+                ins = supabase.table("rotas").insert(base_row).execute()
+            except Exception:
+                # banco antigo sem coluna session_date -> tenta sem ela
+                base_row.pop("session_date", None)
+                ins = supabase.table("rotas").insert(base_row).execute()
             if ins.data:
                 rota_id = ins.data[0]["id"]
         else:
@@ -177,8 +177,17 @@ def importar_json_para_supabase(dados_json: dict) -> dict[str, Any]:
                         "atualizado_em": agora_sp().isoformat(),
                     }
                 ).eq("id", rota_id).execute()
-            except:
-                pass
+            except Exception:
+                try:
+                    supabase.table("rotas").update(
+                        {
+                            "total_paradas": total_paradas,
+                            "total_pacotes": total_pacotes,
+                            "atualizado_em": agora_sp().isoformat(),
+                        }
+                    ).eq("id", rota_id).execute()
+                except Exception:
+                    pass
 
         # 1b) pré-carrega descrições por ID (Supabase primeiro, local como fallback)
         todos_codigos: list[str] = []

@@ -214,11 +214,11 @@ class TestGerarPendentesSessao:
     """Geração real de pendentes (retornados ao galpão viram pendentes)."""
 
     def test_gera_retornados_como_pendentes(self, mock_supabase):
-        """Retornados ao galpão (não entregues) viram pendentes; o resto não."""
+        """Retornados ao galpão (não entregues) viram pendentes, COM ou SEM motorista."""
         from app.services.galpao_service import gerar_pendentes_sessao
 
         por_tabela = {
-            # 2 retornados com motorista+rota; 1 sem motorista (ignorado)
+            # 2 retornados com motorista+rota; 1 sem motorista (tambem vira pendente)
             "galpao_scans": [
                 {"codigo_pacote": "P1", "rota_id": "r1", "motorista_id": "m1"},
                 {"codigo_pacote": "P2", "rota_id": "r1", "motorista_id": "m1"},
@@ -226,7 +226,7 @@ class TestGerarPendentesSessao:
             ],
             "paradas": [{"id": "pa1", "rota_id": "r1", "endereco": "Rua X"}],
             "pacotes": [{"codigo_pacote": "P2", "parada_id": "pa1"}],
-            # P1 já pendente hoje -> só P2 é criado (com endereço)
+            # P1 já pendente hoje -> P2 e P9 são criados (P2 com endereço)
             "pacotes_pendentes": [{"codigo_pacote": "P1", "motorista_id": "m1"}],
         }
         inseridos = []
@@ -250,11 +250,22 @@ class TestGerarPendentesSessao:
         finally:
             mock_supabase.table.side_effect = None
 
-        assert n == 1
-        assert inseridos and inseridos[0][0]["codigo_pacote"] == "P2"
-        assert inseridos[0][0]["motorista_id"] == "m1"
-        assert inseridos[0][0]["status"] == "pendente"
-        assert inseridos[0][0]["endereco"] == "Rua X"
+        assert n == 2
+        # insert e' em lote: cada item de `inseridos` e' uma lista
+        todos = [
+            d
+            for lote in inseridos
+            for d in (lote if isinstance(lote, list) else [lote])
+        ]
+        cods = sorted(d["codigo_pacote"] for d in todos)
+        assert cods == ["P2", "P9"]
+        p2 = next(d for d in todos if d["codigo_pacote"] == "P2")
+        assert p2["motorista_id"] == "m1"
+        assert p2["status"] == "pendente"
+        assert p2["endereco"] == "Rua X"
+        p9 = next(d for d in todos if d["codigo_pacote"] == "P9")
+        assert p9["motorista_id"] is None
+        assert p9["status"] == "pendente"
 
     def test_sem_retorno_nao_gera(self, mock_supabase):
         from app.services.galpao_service import gerar_pendentes_sessao
